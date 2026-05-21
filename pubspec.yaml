@@ -44,7 +44,7 @@ dev_dependencies:
 flutter_launcher_icons:
   windows:
     generate: true
-    image_path: "assets/images/logo_toko_faisal.png"
+    image_path: "assets/images/logo_circle.png"
     icon_size: 48
 
 # For information on the generic Dart part of this file, see the

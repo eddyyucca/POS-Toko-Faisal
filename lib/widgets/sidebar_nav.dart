@@ -41,24 +41,23 @@ class SidebarNav extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
+              shape: BoxShape.circle,
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.4),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+                  color: AppColors.primary.withValues(alpha: 0.5),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+            child: ClipOval(
               child: Image.asset(
-                'assets/images/logo_toko_faisal.png',
-                fit: BoxFit.contain,
+                'assets/images/logo_circle.png',
+                fit: BoxFit.cover,
               ),
             ),
           ),
