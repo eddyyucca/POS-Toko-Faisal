@@ -16,6 +16,9 @@ class SidebarNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final role = Provider.of<AppProvider>(context).currentUser?.role ?? 'Kasir';
+    final isAdmin = role == 'Admin';
+
     return Container(
       width: 230,
       color: AppColors.sidebar,
@@ -25,11 +28,13 @@ class SidebarNav extends StatelessWidget {
           const SizedBox(height: 8),
           _buildNavItem(0, Icons.point_of_sale_rounded, 'Kasir'),
           _buildNavItem(1, Icons.inventory_2_rounded, 'Produk'),
+          if (isAdmin) _buildNavItem(7, Icons.local_shipping_rounded, 'Supplier'),
           _buildNavItem(2, Icons.checklist_rounded, 'Opname'),
-          _buildNavItem(3, Icons.bar_chart_rounded, 'Laporan'),
+          if (isAdmin) _buildNavItem(3, Icons.bar_chart_rounded, 'Laporan'),
           _buildNavItem(4, Icons.receipt_long_rounded, 'Riwayat'),
           const Spacer(),
-          _buildNavItem(5, Icons.settings_rounded, 'Pengaturan'),
+          if (isAdmin) _buildNavItem(6, Icons.people_rounded, 'Pengguna'),
+          if (isAdmin) _buildNavItem(5, Icons.settings_rounded, 'Pengaturan'),
           _buildUserFooter(context),
         ],
       ),

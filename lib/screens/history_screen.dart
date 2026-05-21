@@ -1,42 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
-  static final List<Map<String, dynamic>> _transactions = List.generate(18, (i) {
-    final items = [
-      ['☕ Kopi Arabika x2', '🍳 Nasi Goreng x1'],
-      ['🧋 Cappuccino x1', '🍞 Roti Bakar x2'],
-      ['🥑 Jus Alpukat x3'],
-      ['🍜 Mie Ayam x1', '💧 Air Mineral x2', '🍌 Pisang Goreng x2'],
-      ['☕ Kopi Arabika x1', '🥪 Sandwich x1'],
-    ];
-    final amounts = [98000, 62000, 66000, 71000, 83000];
-    final methods = ['Tunai', 'QRIS', 'Kartu Debit', 'Transfer'];
-    final hour = 8 + (i * 37 % 10);
-    final min = (i * 13) % 60;
-    return {
-      'id': 'TRX-${(1000 + i).toString()}',
-      'time': '${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}',
-      'items': items[i % items.length],
-      'amount': amounts[i % amounts.length],
-      'method': methods[i % methods.length],
-      'cashier': i % 3 == 0 ? 'Budi' : 'Admin',
-    };
-  });
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AppProvider>(context, listen: false).loadTransactionHistory();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildHeader(),
-        Expanded(child: _buildList()),
-      ],
+    return Consumer<AppProvider>(
+      builder: (context, provider, child) {
+        final transactions = provider.transactionHistory;
+        
+        // Calculate totals for today
+        final today = DateTime.now();
+        int totalTrx = 0;
+        double totalIncome = 0;
+        
+        for (var tx in transactions) {
+          DateTime dt = tx['dateObj'];
+          if (dt.year == today.year && dt.month == today.month && dt.day == today.day) {
+            totalTrx++;
+            totalIncome += tx['amount'];
+          }
+        }
+
+        return Column(
+          children: [
+            _buildHeader(totalTrx, totalIncome),
+            Expanded(child: _buildList(transactions)),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(int totalTrx, double totalIncome) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
@@ -51,18 +63,20 @@ class HistoryScreen extends StatelessWidget {
               children: [
                 Text('Riwayat Transaksi', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 SizedBox(height: 4),
-                Text('Seluruh transaksi hari ini', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                Text('Seluruh transaksi', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ],
             ),
           ),
-          _SummaryChip(label: 'Total Transaksi', value: '18', color: AppColors.primary),
+          _SummaryChip(label: 'Total Transaksi Hari Ini', value: totalTrx.toString(), color: AppColors.primary),
           const SizedBox(width: 12),
-          _SummaryChip(label: 'Total Pendapatan', value: 'Rp 1.287.000', color: AppColors.accent),
+          _SummaryChip(label: 'Total Pendapatan Hari Ini', value: _formatPrice(totalIncome), color: AppColors.accent),
           const SizedBox(width: 16),
           OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.download_rounded, size: 16),
-            label: const Text('Export'),
+            onPressed: () {
+              Provider.of<AppProvider>(context, listen: false).loadTransactionHistory();
+            },
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Refresh'),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.textPrimary,
               side: const BorderSide(color: AppColors.border),
@@ -75,15 +89,29 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildList() {
+  Widget _buildList(List<Map<String, dynamic>> transactions) {
+    if (transactions.isEmpty) {
+      return const Center(child: Text('Belum ada transaksi.', style: TextStyle(color: AppColors.textSecondary)));
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(24),
-      itemCount: _transactions.length,
+      itemCount: transactions.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, i) => _TransactionCard(tx: _transactions[i]),
+      itemBuilder: (_, i) => _TransactionCard(tx: transactions[i]),
     );
   }
+
+  String _formatPrice(double price) {
+    final parts = price.toInt().toString().split('').reversed.toList();
+    final result = <String>[];
+    for (int i = 0; i < parts.length; i++) {
+      if (i > 0 && i % 3 == 0) result.add('.');
+      result.add(parts[i]);
+    }
+    return 'Rp ${result.reversed.join()}';
+  }
 }
+
 
 class _SummaryChip extends StatelessWidget {
   final String label;
@@ -179,7 +207,7 @@ class _TransactionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                _formatPrice((tx['amount'] as int).toDouble()),
+                _formatPrice((tx['amount'] as num).toDouble()),
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 4),

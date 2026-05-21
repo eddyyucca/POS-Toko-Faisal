@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../models/user.dart';
+import '../models/supplier.dart';
+import '../models/purchase.dart';
 import '../database/database_helper.dart';
 
 class AppProvider with ChangeNotifier {
@@ -214,5 +216,150 @@ class AppProvider with ChangeNotifier {
     _cartItems.removeWhere((item) => item.product.id == productId);
     await loadProducts();
   }
-}
 
+  // --- User Management (CRUD) ---
+  
+  List<User> _usersList = [];
+  List<User> get usersList => _usersList;
+
+  Future<void> loadUsers() async {
+    final db = await DatabaseHelper.instance.database;
+    final maps = await db.query('users');
+    _usersList = maps.map((e) => User.fromMap(e)).toList();
+    notifyListeners();
+  }
+
+  Future<void> addUser(User user) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.insert('users', user.toMap());
+    await loadUsers();
+  }
+
+  Future<void> updateUser(User user) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.update(
+      'users',
+      user.toMap(),
+      where: 'id = ?',
+      whereArgs: [user.id],
+    );
+    await loadUsers();
+  }
+
+  Future<void> deleteUser(String userId) async {
+    // Jangan hapus diri sendiri
+    if (_currentUser?.id == userId) return;
+    
+    final db = await DatabaseHelper.instance.database;
+    await db.delete(
+      'users',
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+    await loadUsers();
+  }
+
+  // --- Supplier & Purchase Management ---
+  
+  List<Supplier> _suppliersList = [];
+  List<Supplier> get suppliersList => _suppliersList;
+
+  List<Purchase> _purchasesList = [];
+  List<Purchase> get purchasesList => _purchasesList;
+
+  Future<void> loadSuppliers() async {
+    final db = await DatabaseHelper.instance.database;
+    final maps = await db.query('suppliers');
+    _suppliersList = maps.map((e) => Supplier.fromMap(e)).toList();
+    notifyListeners();
+  }
+
+  Future<void> addSupplier(Supplier supplier) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.insert('suppliers', supplier.toMap());
+    await loadSuppliers();
+  }
+
+  Future<void> updateSupplier(Supplier supplier) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.update('suppliers', supplier.toMap(), where: 'id = ?', whereArgs: [supplier.id]);
+    await loadSuppliers();
+  }
+
+  Future<void> deleteSupplier(String id) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.delete('suppliers', where: 'id = ?', whereArgs: [id]);
+    await loadSuppliers();
+  }
+
+  Future<void> processPurchase(Purchase purchase, List<PurchaseItem> items) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.transaction((txn) async {
+      // 1. Save Purchase
+      await txn.insert('purchases', purchase.toMap());
+
+      // 2. Save Items and Update Stock Gudang
+      for (var item in items) {
+        await txn.insert('purchase_items', item.toMap());
+
+        // Update Stok Gudang
+        Product target = _products.firstWhere((p) => p.id == item.productId);
+        int newGudang = target.stockGudang + item.qty;
+        await txn.update(
+          'products',
+          {'stockGudang': newGudang},
+          where: 'id = ?',
+          whereArgs: [item.productId],
+        );
+      }
+    });
+
+    await loadProducts();
+  }
+
+  // --- Transaction History ---
+  List<Map<String, dynamic>> _transactionHistory = [];
+  List<Map<String, dynamic>> get transactionHistory => _transactionHistory;
+
+  Future<void> loadTransactionHistory() async {
+    final db = await DatabaseHelper.instance.database;
+    final List<Map<String, dynamic>> txns = await db.rawQuery('''
+      SELECT t.id, t.date, t.total, u.username as cashier
+      FROM transactions t
+      LEFT JOIN users u ON t.userId = u.id
+      ORDER BY t.date DESC
+    ''');
+
+    List<Map<String, dynamic>> history = [];
+    
+    for (var tx in txns) {
+      final itemsQuery = await db.rawQuery('''
+        SELECT ti.qty, p.name, p.emoji
+        FROM transaction_items ti
+        LEFT JOIN products p ON ti.productId = p.id
+        WHERE ti.transactionId = ?
+      ''', [tx['id']]);
+
+      List<String> itemsList = [];
+      for (var item in itemsQuery) {
+        itemsList.add('${item['emoji'] ?? ''} ${item['name'] ?? 'Unknown'} x${item['qty']}');
+      }
+
+      DateTime date = DateTime.parse(tx['date'].toString());
+      String timeStr = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+      history.add({
+        'id': tx['id'],
+        'time': timeStr,
+        'dateObj': date,
+        'amount': tx['total'],
+        'cashier': tx['cashier'] ?? 'Admin',
+        'method': 'Tunai', // Default for now
+        'items': itemsList,
+      });
+    }
+
+    _transactionHistory = history;
+    notifyListeners();
+  }
+}

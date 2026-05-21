@@ -10,6 +10,8 @@ import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/opname_screen.dart';
+import 'screens/users_screen.dart';
+import 'screens/suppliers_screen.dart';
 import 'providers/app_provider.dart';
 import 'database/database_helper.dart';
 
@@ -73,6 +75,8 @@ class _MainShellState extends State<MainShell> {
     _NavPage(title: 'Laporan', icon: Icons.bar_chart_rounded),
     _NavPage(title: 'Riwayat', icon: Icons.receipt_long_rounded),
     _NavPage(title: 'Pengaturan', icon: Icons.settings_rounded),
+    _NavPage(title: 'Pengguna', icon: Icons.people_rounded),
+    _NavPage(title: 'Supplier', icon: Icons.local_shipping_rounded),
   ];
 
   Widget get _currentScreen {
@@ -83,6 +87,8 @@ class _MainShellState extends State<MainShell> {
       case 3: return const ReportsScreen();
       case 4: return const HistoryScreen();
       case 5: return const SettingsScreen();
+      case 6: return const UsersScreen();
+      case 7: return const SuppliersScreen();
       default: return const PosScreen();
     }
   }

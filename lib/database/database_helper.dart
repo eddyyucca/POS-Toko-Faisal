@@ -29,8 +29,21 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 3,
         onCreate: _createDB,
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 3) {
+            await db.execute('DROP TABLE IF EXISTS users');
+            await db.execute('DROP TABLE IF EXISTS products');
+            await db.execute('DROP TABLE IF EXISTS transactions');
+            await db.execute('DROP TABLE IF EXISTS transaction_items');
+            await db.execute('DROP TABLE IF EXISTS stock_opname');
+            await db.execute('DROP TABLE IF EXISTS suppliers');
+            await db.execute('DROP TABLE IF EXISTS purchases');
+            await db.execute('DROP TABLE IF EXISTS purchase_items');
+            await _createDB(db, newVersion);
+          }
+        },
       ),
     );
   }
@@ -101,6 +114,36 @@ class DatabaseHelper {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE suppliers (
+        id $idType,
+        name $textType,
+        phone $textType,
+        address $textType
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE purchases (
+        id $idType,
+        date $textType,
+        supplierId $textType,
+        total $realType,
+        notes TEXT,
+        userId $textType
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE purchase_items (
+        id $idType,
+        purchaseId $textType,
+        productId $textType,
+        qty $integerType,
+        costPrice $realType
+      )
+    ''');
+
     // Insert Default User (admin/admin)
     await db.insert('users', {
       'id': '1',
@@ -111,11 +154,15 @@ class DatabaseHelper {
 
     // Insert Dummy Products for initial database setup
     final dummyProducts = [
-      {'id': '1', 'name': 'Kopi Arabika', 'category': 'Minuman', 'price': 25000.0, 'stockGudang': 50, 'stockDisplay': 10, 'minStock': 5, 'maxStock': 60, 'emoji': '☕', 'discountPercent': 0.0},
-      {'id': '2', 'name': 'Teh Tarik', 'category': 'Minuman', 'price': 18000.0, 'stockGudang': 40, 'stockDisplay': 15, 'minStock': 10, 'maxStock': 50, 'emoji': '🍵', 'discountPercent': 0.0},
-      {'id': '3', 'name': 'Jus Alpukat', 'category': 'Minuman', 'price': 22000.0, 'stockGudang': 30, 'stockDisplay': 5, 'minStock': 5, 'maxStock': 40, 'emoji': '🥑', 'discountPercent': 0.0},
-      {'id': '4', 'name': 'Es Lemon Tea', 'category': 'Minuman', 'price': 15000.0, 'stockGudang': 60, 'stockDisplay': 20, 'minStock': 10, 'maxStock': 80, 'emoji': '🍋', 'discountPercent': 5.0},
-      {'id': '7', 'name': 'Nasi Goreng', 'category': 'Makanan', 'price': 35000.0, 'stockGudang': 20, 'stockDisplay': 5, 'minStock': 5, 'maxStock': 30, 'emoji': '🍳', 'discountPercent': 0.0},
+      {'id': '1', 'name': 'Indomie Goreng', 'category': 'Makanan', 'price': 3000.0, 'stockGudang': 200, 'stockDisplay': 50, 'minStock': 20, 'maxStock': 100, 'emoji': '🍜', 'discountPercent': 0.0},
+      {'id': '2', 'name': 'Beras Maknyus 5Kg', 'category': 'Sembako', 'price': 70000.0, 'stockGudang': 50, 'stockDisplay': 10, 'minStock': 5, 'maxStock': 30, 'emoji': '🌾', 'discountPercent': 0.0},
+      {'id': '3', 'name': 'Minyak Goreng Bimoli 2L', 'category': 'Sembako', 'price': 35000.0, 'stockGudang': 40, 'stockDisplay': 15, 'minStock': 5, 'maxStock': 25, 'emoji': '🛢️', 'discountPercent': 0.0},
+      {'id': '4', 'name': 'Sabun Mandi Lifebuoy', 'category': 'Kebutuhan Harian', 'price': 4500.0, 'stockGudang': 100, 'stockDisplay': 30, 'minStock': 10, 'maxStock': 50, 'emoji': '🧼', 'discountPercent': 0.0},
+      {'id': '5', 'name': 'Shampoo Clear 170ml', 'category': 'Kebutuhan Harian', 'price': 22000.0, 'stockGudang': 30, 'stockDisplay': 10, 'minStock': 5, 'maxStock': 20, 'emoji': '🧴', 'discountPercent': 5.0},
+      {'id': '6', 'name': 'Gula Pasir Gulaku 1Kg', 'category': 'Sembako', 'price': 16500.0, 'stockGudang': 60, 'stockDisplay': 20, 'minStock': 10, 'maxStock': 40, 'emoji': '🍚', 'discountPercent': 0.0},
+      {'id': '7', 'name': 'Kopi Kapal Api Sachet (Isi 10)', 'category': 'Minuman', 'price': 12000.0, 'stockGudang': 80, 'stockDisplay': 20, 'minStock': 10, 'maxStock': 40, 'emoji': '☕', 'discountPercent': 0.0},
+      {'id': '8', 'name': 'Susu Bear Brand', 'category': 'Minuman', 'price': 10500.0, 'stockGudang': 50, 'stockDisplay': 20, 'minStock': 10, 'maxStock': 40, 'emoji': '🥛', 'discountPercent': 0.0},
+      {'id': '9', 'name': 'Roti Tawar Sari Roti', 'category': 'Makanan', 'price': 16000.0, 'stockGudang': 0, 'stockDisplay': 15, 'minStock': 5, 'maxStock': 20, 'emoji': '🍞', 'discountPercent': 0.0},
     ];
 
     for (var prod in dummyProducts) {
