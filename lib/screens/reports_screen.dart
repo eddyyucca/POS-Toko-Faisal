@@ -43,12 +43,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 20),
           _buildSummaryCards(),
           const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Wrap(
+            spacing: 20,
+            runSpacing: 20,
             children: [
-              Expanded(flex: 3, child: _buildBarChart()),
-              const SizedBox(width: 20),
-              Expanded(flex: 2, child: _buildTopProducts()),
+              SizedBox(
+                width: 600,
+                child: _buildBarChart(),
+              ),
+              SizedBox(
+                width: 350,
+                child: _buildTopProducts(),
+              ),
             ],
           ),
         ],
@@ -57,8 +63,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildPageHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 16,
       children: [
         const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,28 +83,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.border),
           ),
-          child: Row(
-            children: List.generate(_periods.length, (i) {
-              final bool sel = _period == i;
-              return GestureDetector(
-                onTap: () => setState(() => _period = i),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: sel ? AppColors.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: Text(
-                    _periods[i],
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
-                      color: sel ? Colors.white : AppColors.textSecondary,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(_periods.length, (i) {
+                final bool sel = _period == i;
+                return GestureDetector(
+                  onTap: () => setState(() => _period = i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: sel ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(
+                      _periods[i],
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+                        color: sel ? Colors.white : AppColors.textSecondary,
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
         ),
       ],
@@ -107,59 +120,63 @@ class _ReportsScreenState extends State<ReportsScreen> {
       {'label': 'Total Pendapatan', 'value': 'Rp 13.780.000', 'change': '+12.4%', 'up': true, 'icon': Icons.attach_money_rounded, 'color': AppColors.primary},
       {'label': 'Total Transaksi', 'value': '202', 'change': '+8.7%', 'up': true, 'icon': Icons.receipt_rounded, 'color': AppColors.accent},
       {'label': 'Rata-rata Transaksi', 'value': 'Rp 68.200', 'change': '+3.2%', 'up': true, 'icon': Icons.trending_up_rounded, 'color': AppColors.warning},
-      {'label': 'Produk Terjual', 'value': '547', 'change': '-2.1%', 'up': false, 'icon': Icons.inventory_rounded, 'color': Color(0xFF8B5CF6)},
+      {'label': 'Produk Terjual', 'value': '547', 'change': '-2.1%', 'up': false, 'icon': Icons.inventory_rounded, 'color': const Color(0xFF8B5CF6)},
     ];
-    return Row(
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
       children: cards.map((c) {
         final color = c['color'] as Color;
-        return Expanded(
-          child: Container(
-            margin: EdgeInsets.only(right: c == cards.last ? 0 : 16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-              boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(c['icon'] as IconData, color: color, size: 20),
+        return Container(
+          width: 240,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (c['up'] as bool) ? AppColors.accent.withValues(alpha: 0.1) : AppColors.danger.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        c['change'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: (c['up'] as bool) ? AppColors.accent : AppColors.danger,
-                        ),
+                    child: Icon(c['icon'] as IconData, color: color, size: 20),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (c['up'] as bool) ? AppColors.accent.withOpacity(0.1) : AppColors.danger.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      c['change'] as String,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: (c['up'] as bool) ? AppColors.accent : AppColors.danger,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(c['value'] as String, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                const SizedBox(height: 4),
-                Text(c['label'] as String, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              ],
-            ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(c['value'] as String, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              ),
+              const SizedBox(height: 4),
+              Text(c['label'] as String, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ],
           ),
         );
       }).toList(),

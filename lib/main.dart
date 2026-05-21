@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import 'theme/app_theme.dart';
 import 'widgets/sidebar_nav.dart';
 import 'screens/pos_screen.dart';
@@ -6,9 +8,38 @@ import 'screens/products_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/opname_screen.dart';
+import 'providers/app_provider.dart';
+import 'database/database_helper.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize window manager for fullscreen
+  await windowManager.ensureInitialized();
+
+  WindowOptions windowOptions = const WindowOptions(
+    title: 'Toko Faisal POS',
+    center: true,
+  );
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setFullScreen(true);
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
+  // Make sure database is initialized on startup
+  await DatabaseHelper.instance.database;
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppProvider()..loadProducts()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -20,7 +51,7 @@ class MyApp extends StatelessWidget {
       title: 'Toko Faisal POS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const MainShell(),
+      home: const LoginScreen(),
     );
   }
 }
@@ -38,6 +69,7 @@ class _MainShellState extends State<MainShell> {
   static const List<_NavPage> _pages = [
     _NavPage(title: 'Kasir', icon: Icons.point_of_sale_rounded),
     _NavPage(title: 'Produk', icon: Icons.inventory_2_rounded),
+    _NavPage(title: 'Opname', icon: Icons.checklist_rounded),
     _NavPage(title: 'Laporan', icon: Icons.bar_chart_rounded),
     _NavPage(title: 'Riwayat', icon: Icons.receipt_long_rounded),
     _NavPage(title: 'Pengaturan', icon: Icons.settings_rounded),
@@ -47,9 +79,10 @@ class _MainShellState extends State<MainShell> {
     switch (_selectedIndex) {
       case 0: return const PosScreen();
       case 1: return const ProductsScreen();
-      case 2: return const ReportsScreen();
-      case 3: return const HistoryScreen();
-      case 4: return const SettingsScreen();
+      case 2: return const OpnameScreen();
+      case 3: return const ReportsScreen();
+      case 4: return const HistoryScreen();
+      case 5: return const SettingsScreen();
       default: return const PosScreen();
     }
   }

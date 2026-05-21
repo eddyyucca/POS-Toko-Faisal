@@ -10,7 +10,7 @@ class ProductListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool outOfStock = product.stock == 0;
+    final bool outOfStock = product.stockDisplay == 0;
     return GestureDetector(
       onTap: outOfStock ? null : onTap,
       child: Container(
@@ -57,7 +57,7 @@ class ProductListTile extends StatelessWidget {
                   color: AppColors.danger.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text('Habis', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                child: const Text('Habis', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.danger)),
               )
             else
               Container(
@@ -68,7 +68,7 @@ class ProductListTile extends StatelessWidget {
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
-                  'Stok: ${product.stock}',
+                  'Stok: ${product.stockDisplay}',
                   style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                 ),
               ),

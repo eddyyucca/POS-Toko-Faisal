@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
+import '../providers/app_provider.dart';
 
 class CartPanel extends StatelessWidget {
   final List<CartItem> cartItems;
@@ -20,10 +22,6 @@ class CartPanel extends StatelessWidget {
     required this.onCheckout,
   });
 
-  double get subtotal => cartItems.fold(0, (sum, item) => sum + item.subtotal);
-  double get tax => subtotal * 0.11;
-  double get total => subtotal + tax;
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -38,7 +36,7 @@ class CartPanel extends StatelessWidget {
           Expanded(
             child: cartItems.isEmpty ? _buildEmptyCart() : _buildCartList(),
           ),
-          if (cartItems.isNotEmpty) _buildOrderSummary(),
+          if (cartItems.isNotEmpty) _buildOrderSummary(context),
         ],
       ),
     );
@@ -87,7 +85,7 @@ class CartPanel extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: 0.1),
+                  color: AppColors.danger.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -152,7 +150,8 @@ class CartPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderSummary() {
+  Widget _buildOrderSummary(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context, listen: false);
     return Container(
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border, width: 1)),
@@ -160,14 +159,14 @@ class CartPanel extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          _buildSummaryRow('Subtotal', subtotal),
+          _buildSummaryRow('Subtotal', provider.subtotal),
           const SizedBox(height: 6),
-          _buildSummaryRow('PPN (11%)', tax),
+          _buildSummaryRow('Diskon', provider.totalDiscount),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(color: AppColors.border, height: 1),
           ),
-          _buildSummaryRow('Total', total, isTotal: true),
+          _buildSummaryRow('Total', provider.total, isTotal: true),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -186,7 +185,7 @@ class CartPanel extends StatelessWidget {
                   const Icon(Icons.payment_rounded, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    'Bayar ${_formatPrice(total)}',
+                    'Bayar ${_formatPrice(provider.total)}',
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ],

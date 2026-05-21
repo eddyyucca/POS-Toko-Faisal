@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../providers/app_provider.dart';
+import '../utils/receipt_generator.dart';
 
 class PaymentDialog extends StatefulWidget {
   final double total;
@@ -18,10 +21,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
   bool _paymentDone = false;
 
   final List<Map<String, dynamic>> _methods = [
-    {'label': 'Tunai', 'icon': Icons.payments_rounded, 'color': Color(0xFF10B981)},
-    {'label': 'QRIS', 'icon': Icons.qr_code_rounded, 'color': Color(0xFF6366F1)},
-    {'label': 'Kartu Debit', 'icon': Icons.credit_card_rounded, 'color': Color(0xFF2563EB)},
-    {'label': 'Transfer', 'icon': Icons.account_balance_rounded, 'color': Color(0xFFF59E0B)},
+    {'label': 'Tunai', 'icon': Icons.payments_rounded, 'color': const Color(0xFF10B981)},
+    {'label': 'QRIS', 'icon': Icons.qr_code_rounded, 'color': const Color(0xFF6366F1)},
+    {'label': 'Kartu Debit', 'icon': Icons.credit_card_rounded, 'color': const Color(0xFF2563EB)},
+    {'label': 'Transfer', 'icon': Icons.account_balance_rounded, 'color': const Color(0xFFF59E0B)},
   ];
 
   double get cashAmount => double.tryParse(_cashController.text.replaceAll('.', '')) ?? 0;
@@ -31,6 +34,20 @@ class _PaymentDialogState extends State<PaymentDialog> {
   void dispose() {
     _cashController.dispose();
     super.dispose();
+  }
+
+  void _printReceipt() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    await ReceiptGenerator.printReceipt(
+      items: provider.cartItems,
+      subtotal: provider.subtotal,
+      totalDiscount: provider.totalDiscount,
+      total: provider.total,
+      cashAmount: _selectedMethod == 0 ? cashAmount : widget.total,
+      change: _selectedMethod == 0 ? change : 0,
+      cashier: provider.currentUser,
+      paymentMethod: _methods[_selectedMethod]['label'] as String,
+    );
   }
 
   @override
@@ -45,6 +62,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
     );
   }
 
+  // ... (keep the rest the same until buildSuccessView) ...
   Widget _buildPaymentForm() {
     return Padding(
       padding: const EdgeInsets.all(28),
@@ -76,9 +94,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.06),
+              color: AppColors.primary.withOpacity(0.06),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+              border: Border.all(color: AppColors.primary.withOpacity(0.15)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -105,7 +123,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     margin: EdgeInsets.only(right: i < _methods.length - 1 ? 8 : 0),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: sel ? (m['color'] as Color).withValues(alpha: 0.08) : AppColors.background,
+                      color: sel ? (m['color'] as Color).withOpacity(0.08) : AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: sel ? (m['color'] as Color) : AppColors.border,
@@ -183,7 +201,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.08),
+                  color: AppColors.accent.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -230,7 +248,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.1),
+              color: AppColors.accent.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.check_circle_rounded, size: 48, color: AppColors.accent),
@@ -247,7 +265,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
+                color: AppColors.warning.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -268,7 +286,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _printReceipt,
                   icon: const Icon(Icons.print_rounded, size: 16),
                   label: const Text('Cetak Struk'),
                   style: OutlinedButton.styleFrom(

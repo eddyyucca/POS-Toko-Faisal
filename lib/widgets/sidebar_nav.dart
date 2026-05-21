@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../providers/app_provider.dart';
+import '../screens/login_screen.dart';
 
 class SidebarNav extends StatelessWidget {
   final int selectedIndex;
@@ -22,11 +25,12 @@ class SidebarNav extends StatelessWidget {
           const SizedBox(height: 8),
           _buildNavItem(0, Icons.point_of_sale_rounded, 'Kasir'),
           _buildNavItem(1, Icons.inventory_2_rounded, 'Produk'),
-          _buildNavItem(2, Icons.bar_chart_rounded, 'Laporan'),
-          _buildNavItem(3, Icons.receipt_long_rounded, 'Riwayat'),
+          _buildNavItem(2, Icons.checklist_rounded, 'Opname'),
+          _buildNavItem(3, Icons.bar_chart_rounded, 'Laporan'),
+          _buildNavItem(4, Icons.receipt_long_rounded, 'Riwayat'),
           const Spacer(),
-          _buildNavItem(4, Icons.settings_rounded, 'Pengaturan'),
-          _buildUserFooter(),
+          _buildNavItem(5, Icons.settings_rounded, 'Pengaturan'),
+          _buildUserFooter(context),
         ],
       ),
     );
@@ -36,7 +40,7 @@ class SidebarNav extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
       ),
       child: Row(
         children: [
@@ -48,7 +52,7 @@ class SidebarNav extends StatelessWidget {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.5),
+                  color: AppColors.primary.withOpacity(0.5),
                   blurRadius: 14,
                   offset: const Offset(0, 4),
                 ),
@@ -102,10 +106,10 @@ class SidebarNav extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
+          color: isActive ? AppColors.primary.withOpacity(0.18) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: isActive
-              ? Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 1)
+              ? Border.all(color: AppColors.primary.withOpacity(0.5), width: 1)
               : null,
         ),
         child: Row(
@@ -129,7 +133,7 @@ class SidebarNav extends StatelessWidget {
               Container(
                 width: 5,
                 height: 5,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),
@@ -141,41 +145,57 @@ class SidebarNav extends StatelessWidget {
     );
   }
 
-  Widget _buildUserFooter() {
-    return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.sidebarActive,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Center(
-              child: Text('A', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-            ),
+  Widget _buildUserFooter(BuildContext context) {
+    return Consumer<AppProvider>(
+      builder: (context, provider, child) {
+        final username = provider.currentUser?.username ?? 'Admin';
+        final role = provider.currentUser?.role ?? 'Kasir';
+        final initial = username.isNotEmpty ? username[0].toUpperCase() : 'A';
+        
+        return Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.sidebarActive,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
           ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Admin', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                Text('Kasir Utama', style: TextStyle(color: Color(0xFF8FA3B4), fontSize: 11)),
-              ],
-            ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Center(
+                  child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(username, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(role, style: const TextStyle(color: Color(0xFF8FA3B4), fontSize: 11)),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  provider.logout();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+                child: const Icon(Icons.logout_rounded, color: Color(0xFF8FA3B4), size: 17),
+              ),
+            ],
           ),
-          const Icon(Icons.logout_rounded, color: Color(0xFF8FA3B4), size: 17),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_card.dart' show ProductListTile;
@@ -13,60 +15,32 @@ class PosScreen extends StatefulWidget {
 }
 
 class _PosScreenState extends State<PosScreen> {
-  final List<CartItem> _cart = [];
   String _selectedCategory = 'Semua';
   String _searchQuery = '';
   final _searchController = TextEditingController();
 
   final List<String> _categories = ['Semua', 'Minuman', 'Makanan', 'Snack'];
 
-  List<Product> get _filteredProducts {
-    return dummyProducts.where((p) {
+  List<Product> _getFilteredProducts(List<Product> allProducts) {
+    return allProducts.where((p) {
       final matchCat = _selectedCategory == 'Semua' || p.category == _selectedCategory;
       final matchSearch = p.name.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchCat && matchSearch;
     }).toList();
   }
 
-  void _addToCart(Product product) {
-    setState(() {
-      final idx = _cart.indexWhere((i) => i.product.id == product.id);
-      if (idx >= 0) {
-        _cart[idx].quantity++;
-      } else {
-        _cart.add(CartItem(product: product));
-      }
-    });
-  }
-
-  void _incrementItem(CartItem item) {
-    setState(() => item.quantity++);
-  }
-
-  void _decrementItem(CartItem item) {
-    setState(() {
-      if (item.quantity <= 1) {
-        _cart.remove(item);
-      } else {
-        item.quantity--;
-      }
-    });
-  }
-
-  void _removeItem(CartItem item) {
-    setState(() => _cart.remove(item));
-  }
-
-  void _clearCart() {
-    setState(() => _cart.clear());
-  }
-
-  void _openPayment() {
-    final total = _cart.fold<double>(0, (s, i) => s + i.subtotal) * 1.11;
+  void _openPayment(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final total = provider.total;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PaymentDialog(total: total, onSuccess: _clearCart),
+      builder: (_) => PaymentDialog(
+        total: total, 
+        onSuccess: () async {
+          await provider.processCheckout();
+        }
+      ),
     );
   }
 
@@ -78,32 +52,36 @@ class _PosScreenState extends State<PosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _buildProductArea()),
-        CartPanel(
-          cartItems: _cart,
-          onClearCart: _clearCart,
-          onIncrement: _incrementItem,
-          onDecrement: _decrementItem,
-          onRemove: _removeItem,
-          onCheckout: _openPayment,
-        ),
-      ],
+    return Consumer<AppProvider>(
+      builder: (context, provider, child) {
+        return Row(
+          children: [
+            Expanded(child: _buildProductArea(provider.products)),
+            CartPanel(
+              cartItems: provider.cartItems,
+              onClearCart: provider.clearCart,
+              onIncrement: (item) => provider.updateCartItemQuantity(item.product, item.quantity + 1),
+              onDecrement: (item) => provider.updateCartItemQuantity(item.product, item.quantity - 1),
+              onRemove: (item) => provider.removeCartItem(item.product),
+              onCheckout: () => _openPayment(context),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildProductArea() {
+  Widget _buildProductArea(List<Product> allProducts) {
     return Column(
       children: [
-        _buildTopBar(),
-        _buildCategoryTabs(),
-        Expanded(child: _buildProductGrid()),
+        _buildTopBar(allProducts.length),
+        _buildCategoryTabs(allProducts),
+        Expanded(child: _buildProductGrid(allProducts)),
       ],
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(int productCount) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: const BoxDecoration(
@@ -134,9 +112,7 @@ class _PosScreenState extends State<PosScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          _buildStatChip(Icons.inventory_2_rounded, '${dummyProducts.length}', 'Produk', AppColors.primary),
-          const SizedBox(width: 12),
-          _buildStatChip(Icons.receipt_rounded, '24', 'Transaksi', AppColors.accent),
+          _buildStatChip(Icons.inventory_2_rounded, '$productCount', 'Produk', AppColors.primary),
         ],
       ),
     );
@@ -146,9 +122,9 @@ class _PosScreenState extends State<PosScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         children: [
@@ -166,7 +142,7 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-  Widget _buildCategoryTabs() {
+  Widget _buildCategoryTabs(List<Product> allProducts) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: const BoxDecoration(
@@ -178,8 +154,8 @@ class _PosScreenState extends State<PosScreen> {
           ..._categories.map((cat) {
             final bool sel = _selectedCategory == cat;
             final count = cat == 'Semua'
-                ? dummyProducts.length
-                : dummyProducts.where((p) => p.category == cat).length;
+                ? allProducts.length
+                : allProducts.where((p) => p.category == cat).length;
             return GestureDetector(
               onTap: () => setState(() => _selectedCategory = cat),
               child: Container(
@@ -206,7 +182,7 @@ class _PosScreenState extends State<PosScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                       decoration: BoxDecoration(
-                        color: sel ? Colors.white.withValues(alpha: 0.25) : AppColors.border,
+                        color: sel ? Colors.white.withOpacity(0.25) : AppColors.border,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -228,8 +204,8 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-  Widget _buildProductGrid() {
-    final products = _filteredProducts;
+  Widget _buildProductGrid(List<Product> allProducts) {
+    final products = _getFilteredProducts(allProducts);
     if (products.isEmpty) {
       return Center(
         child: Column(
@@ -258,7 +234,15 @@ class _PosScreenState extends State<PosScreen> {
           itemCount: products.length,
           itemBuilder: (_, i) => ProductListTile(
             product: products[i],
-            onTap: () => _addToCart(products[i]),
+            onTap: () {
+              if (products[i].stockDisplay > 0) {
+                Provider.of<AppProvider>(context, listen: false).addToCart(products[i]);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Stok display habis! Lakukan mutasi dari gudang.', style: TextStyle(color: Colors.white)), backgroundColor: AppColors.danger),
+                );
+              }
+            },
           ),
         ),
       ),

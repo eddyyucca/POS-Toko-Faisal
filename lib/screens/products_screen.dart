@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
+import '../widgets/product_form_dialog.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -12,20 +15,123 @@ class ProductsScreen extends StatefulWidget {
 class _ProductsScreenState extends State<ProductsScreen> {
   String _search = '';
 
-  List<Product> get _filtered =>
-      dummyProducts.where((p) => p.name.toLowerCase().contains(_search.toLowerCase())).toList();
+  List<Product> _getFilteredProducts(List<Product> allProducts) {
+    return allProducts
+        .where((p) => p.name.toLowerCase().contains(_search.toLowerCase()))
+        .toList();
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildHeader(),
-        Expanded(child: _buildTable()),
-      ],
+  void _showProductForm(BuildContext context, {Product? product}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ProductFormDialog(
+        product: product,
+        onSave: (savedProduct) {
+          final provider = Provider.of<AppProvider>(context, listen: false);
+          if (product == null) {
+            provider.addProduct(savedProduct);
+          } else {
+            provider.updateProduct(savedProduct);
+          }
+        },
+      ),
     );
   }
 
-  Widget _buildHeader() {
+  void _showDeleteConfirm(BuildContext context, Product product) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Produk'),
+        content: Text('Anda yakin ingin menghapus "${product.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () {
+              Provider.of<AppProvider>(context, listen: false).deleteProduct(product.id);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMutasiDialog(BuildContext context, Product product) {
+    final qtyController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Mutasi Stok: ${product.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Stok Gudang: ${product.stockGudang}'),
+              Text('Stok Display: ${product.stockDisplay}'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Jumlah Pindah ke Display',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final qtyStr = qtyController.text;
+                if (qtyStr.isNotEmpty) {
+                  final qty = int.tryParse(qtyStr) ?? 0;
+                  if (qty > 0 && qty <= product.stockGudang) {
+                    await Provider.of<AppProvider>(context, listen: false)
+                        .mutasiStokGudangKeDisplay(product.id, qty);
+                    if (context.mounted) Navigator.pop(ctx);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Jumlah tidak valid atau stok gudang kurang!')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Pindah'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppProvider>(
+      builder: (context, provider, child) {
+        final products = _getFilteredProducts(provider.products);
+        return Column(
+          children: [
+            _buildHeader(context),
+            Expanded(child: _buildTable(products)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
@@ -63,7 +169,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
           const SizedBox(width: 12),
           ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () => _showProductForm(context),
             icon: const Icon(Icons.add_rounded, size: 18),
             label: const Text('Tambah Produk'),
             style: ElevatedButton.styleFrom(
@@ -79,23 +185,23 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-  Widget _buildTable() {
+  Widget _buildTable(List<Product> products) {
     return Container(
       margin: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
-        boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         children: [
           _buildTableHeader(),
           Expanded(
             child: ListView.separated(
-              itemCount: _filtered.length,
+              itemCount: products.length,
               separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.border),
-              itemBuilder: (_, i) => _buildTableRow(_filtered[i]),
+              itemBuilder: (_, i) => _buildTableRow(products[i], i + 1),
             ),
           ),
         ],
@@ -115,41 +221,37 @@ class _ProductsScreenState extends State<ProductsScreen> {
         children: [
           SizedBox(width: 50, child: Text('No.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
           Expanded(flex: 3, child: Text('Nama Produk', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-          Expanded(flex: 2, child: Text('Kategori', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
           Expanded(flex: 2, child: Text('Harga', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-          Expanded(flex: 1, child: Text('Stok', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-          Expanded(flex: 1, child: Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-          SizedBox(width: 80, child: Text('Aksi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          Expanded(flex: 1, child: Text('Gudang', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          Expanded(flex: 1, child: Text('Display', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          Expanded(flex: 1, child: Text('Min/Max', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+          SizedBox(width: 120, child: Text('Aksi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
         ],
       ),
     );
   }
 
-  Widget _buildTableRow(Product product) {
-    final idx = dummyProducts.indexOf(product) + 1;
-    final bool low = product.stock < 15;
-    final bool out = product.stock == 0;
+  Widget _buildTableRow(Product product, int index) {
+    final bool warningDisplay = product.stockDisplay <= product.minStock;
+    final bool dangerDisplay = product.stockDisplay == 0;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      color: dangerDisplay ? AppColors.danger.withOpacity(0.05) : warningDisplay ? AppColors.warning.withOpacity(0.05) : null,
       child: Row(
         children: [
           SizedBox(
             width: 50,
-            child: Text('$idx', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            child: Text('$index', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           ),
           Expanded(
             flex: 3,
-            child: Text(product.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-          ),
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(product.category, style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
+            child: Row(
+              children: [
+                Text(product.emoji, style: const TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(product.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ],
             ),
           ),
           Expanded(
@@ -158,33 +260,34 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
           Expanded(
             flex: 1,
-            child: Text('${product.stock}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: low ? AppColors.warning : AppColors.textPrimary)),
+            child: Text('${product.stockGudang}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
           ),
           Expanded(
             flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: out ? AppColors.danger.withValues(alpha: 0.1) : low ? AppColors.warning.withValues(alpha: 0.1) : AppColors.accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                out ? 'Habis' : low ? 'Menipis' : 'Tersedia',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: out ? AppColors.danger : low ? AppColors.warning : AppColors.accent,
-                ),
-              ),
-            ),
+            child: Text('${product.stockDisplay}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: dangerDisplay ? AppColors.danger : warningDisplay ? AppColors.warning : AppColors.primary)),
+          ),
+          Expanded(
+            flex: 1,
+            child: Text('${product.minStock}/${product.maxStock}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ),
           SizedBox(
-            width: 80,
+            width: 120,
             child: Row(
               children: [
-                _ActionBtn(icon: Icons.edit_rounded, color: AppColors.primary, onTap: () {}),
+                Tooltip(
+                  message: 'Mutasi Stok ke Display',
+                  child: _ActionBtn(icon: Icons.move_down_rounded, color: AppColors.accent, onTap: () => _showMutasiDialog(context, product)),
+                ),
                 const SizedBox(width: 6),
-                _ActionBtn(icon: Icons.delete_rounded, color: AppColors.danger, onTap: () {}),
+                Tooltip(
+                  message: 'Edit Produk',
+                  child: _ActionBtn(icon: Icons.edit_rounded, color: AppColors.primary, onTap: () => _showProductForm(context, product: product)),
+                ),
+                const SizedBox(width: 6),
+                Tooltip(
+                  message: 'Hapus Produk',
+                  child: _ActionBtn(icon: Icons.delete_rounded, color: AppColors.danger, onTap: () => _showDeleteConfirm(context, product)),
+                ),
               ],
             ),
           ),
@@ -219,7 +322,7 @@ class _ActionBtn extends StatelessWidget {
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(7),
         ),
         child: Icon(icon, size: 14, color: color),
