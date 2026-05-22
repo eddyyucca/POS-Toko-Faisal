@@ -263,7 +263,7 @@ class _CartItemTile extends StatelessWidget {
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(child: Text(item.product.emoji, style: const TextStyle(fontSize: 20))),
+            child: const Center(child: Icon(Icons.inventory_2_rounded, size: 20, color: AppColors.textSecondary)),
           ),
           const SizedBox(width: 10),
           Expanded(

@@ -153,7 +153,7 @@ class _UsersScreenState extends State<UsersScreen> {
                       final isCurrent = provider.currentUser?.id == u.id;
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: u.role == 'Admin' ? AppColors.primary : AppColors.accent,
+                          backgroundColor: u.role == 'Admin' ? AppColors.primary : AppColors.primary,
                           child: Icon(u.role == 'Admin' ? Icons.admin_panel_settings : Icons.person, color: Colors.white),
                         ),
                         title: Text(u.username, style: const TextStyle(fontWeight: FontWeight.w600)),

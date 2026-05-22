@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/product.dart';
 import '../models/user.dart';
 import '../models/supplier.dart';
 import '../models/purchase.dart';
+import '../models/customer.dart';
 import '../database/database_helper.dart';
 
 class AppProvider with ChangeNotifier {
@@ -21,6 +23,54 @@ class AppProvider with ChangeNotifier {
   double get transactionDiscountPercent => _transactionDiscountPercent;
   double get transactionDiscountAmount => _transactionDiscountAmount;
 
+  // --- Settings ---
+  Map<String, String> _settings = {};
+  Map<String, String> get settings => _settings;
+
+  String getSetting(String key, {String defaultValue = ''}) {
+    return _settings[key] ?? defaultValue;
+  }
+
+  Future<void> loadSettings() async {
+    final db = await DatabaseHelper.instance.database;
+    final rows = await db.query('settings');
+    _settings = {for (var row in rows) row['key'] as String: row['value'] as String};
+    notifyListeners();
+  }
+
+  Future<void> saveSetting(String key, String value) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.insert(
+      'settings',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    _settings[key] = value;
+    notifyListeners();
+  }
+
+  Future<void> saveSettings(Map<String, String> newSettings) async {
+    final db = await DatabaseHelper.instance.database;
+    final batch = db.batch();
+    for (var entry in newSettings.entries) {
+      batch.insert(
+        'settings',
+        {'key': entry.key, 'value': entry.value},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+    _settings.addAll(newSettings);
+    notifyListeners();
+  }
+
+  // --- Low Stock ---
+  List<Product> get lowStockProducts =>
+      _products.where((p) => p.stockDisplay <= p.minStock).toList();
+
+  int get lowStockCount => lowStockProducts.length;
+
+  // --- Products ---
   Future<void> loadProducts() async {
     final db = await DatabaseHelper.instance.database;
     final maps = await db.query('products');
@@ -28,6 +78,7 @@ class AppProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Auth ---
   Future<bool> login(String username, String password) async {
     final db = await DatabaseHelper.instance.database;
     final maps = await db.query(
@@ -38,6 +89,7 @@ class AppProvider with ChangeNotifier {
 
     if (maps.isNotEmpty) {
       _currentUser = User.fromMap(maps.first);
+      await loadSettings();
       notifyListeners();
       return true;
     }
@@ -46,17 +98,15 @@ class AppProvider with ChangeNotifier {
 
   void logout() {
     _currentUser = null;
+    _selectedCustomer = null;
     clearCart();
     notifyListeners();
   }
 
   // --- Cart Methods ---
-  
+
   void addToCart(Product product) {
-    // Cek apakah stok display mencukupi (minimal 1)
-    if (product.stockDisplay <= 0) {
-      return; // Tidak bisa ditambahkan jika stok display habis
-    }
+    if (product.stockDisplay <= 0) return;
 
     int index = _cartItems.indexWhere((item) => item.product.id == product.id);
     if (index >= 0) {
@@ -90,6 +140,7 @@ class AppProvider with ChangeNotifier {
     _cartItems.clear();
     _transactionDiscountPercent = 0.0;
     _transactionDiscountAmount = 0.0;
+    _selectedCustomer = null;
     notifyListeners();
   }
 
@@ -114,13 +165,22 @@ class AppProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Selected Customer ---
+  Customer? _selectedCustomer;
+  Customer? get selectedCustomer => _selectedCustomer;
+
+  void setSelectedCustomer(Customer? customer) {
+    _selectedCustomer = customer;
+    notifyListeners();
+  }
+
   // --- Inventory & Checkout Methods ---
 
-  Future<void> processCheckout() async {
+  Future<void> processCheckout({String paymentMethod = 'Tunai'}) async {
     if (_cartItems.isEmpty) return;
 
     final db = await DatabaseHelper.instance.database;
-    final transactionId = DateTime.now().millisecondsSinceEpoch.toString();
+    final transactionId = 'TRX-${DateTime.now().millisecondsSinceEpoch}';
     final dateStr = DateTime.now().toIso8601String();
     final String userId = _currentUser?.id ?? '1';
 
@@ -133,12 +193,14 @@ class AppProvider with ChangeNotifier {
           'total': total,
           'discount': totalDiscount,
           'userId': userId,
+          'paymentMethod': paymentMethod,
+          'customerId': _selectedCustomer?.id,
         });
 
         // 2. Insert Items & Update Stock
         for (var item in _cartItems) {
           await txn.insert('transaction_items', {
-            'id': DateTime.now().microsecondsSinceEpoch.toString(),
+            'id': '${DateTime.now().microsecondsSinceEpoch}_${item.product.id}',
             'transactionId': transactionId,
             'productId': item.product.id,
             'qty': item.quantity,
@@ -155,10 +217,25 @@ class AppProvider with ChangeNotifier {
             whereArgs: [item.product.id],
           );
         }
+
+        // 3. Update customer points & totalSpend if selected
+        if (_selectedCustomer != null) {
+          final pointsEarned = (total / double.parse(getSetting('points_per_rupiah', defaultValue: '1000'))).floor();
+          await txn.update(
+            'customers',
+            {
+              'points': _selectedCustomer!.points + pointsEarned,
+              'totalSpend': _selectedCustomer!.totalSpend + total,
+            },
+            where: 'id = ?',
+            whereArgs: [_selectedCustomer!.id],
+          );
+        }
       });
 
       clearCart();
-      await loadProducts(); // Reload products to get latest stock
+      await loadProducts();
+      await loadCustomers();
     } catch (e) {
       debugPrint('Error during checkout: $e');
     }
@@ -166,7 +243,7 @@ class AppProvider with ChangeNotifier {
 
   Future<void> mutasiStokGudangKeDisplay(String productId, int quantity) async {
     final db = await DatabaseHelper.instance.database;
-    
+
     Product target = _products.firstWhere((p) => p.id == productId);
     if (target.stockGudang >= quantity) {
       int newGudang = target.stockGudang - quantity;
@@ -187,7 +264,7 @@ class AppProvider with ChangeNotifier {
   }
 
   // --- Product Management (CRUD) ---
-  
+
   Future<void> addProduct(Product product) async {
     final db = await DatabaseHelper.instance.database;
     await db.insert('products', product.toMap());
@@ -212,13 +289,12 @@ class AppProvider with ChangeNotifier {
       where: 'id = ?',
       whereArgs: [productId],
     );
-    // Hapus dari keranjang jika ada
     _cartItems.removeWhere((item) => item.product.id == productId);
     await loadProducts();
   }
 
   // --- User Management (CRUD) ---
-  
+
   List<User> _usersList = [];
   List<User> get usersList => _usersList;
 
@@ -247,9 +323,8 @@ class AppProvider with ChangeNotifier {
   }
 
   Future<void> deleteUser(String userId) async {
-    // Jangan hapus diri sendiri
     if (_currentUser?.id == userId) return;
-    
+
     final db = await DatabaseHelper.instance.database;
     await db.delete(
       'users',
@@ -260,7 +335,7 @@ class AppProvider with ChangeNotifier {
   }
 
   // --- Supplier & Purchase Management ---
-  
+
   List<Supplier> _suppliersList = [];
   List<Supplier> get suppliersList => _suppliersList;
 
@@ -295,14 +370,11 @@ class AppProvider with ChangeNotifier {
   Future<void> processPurchase(Purchase purchase, List<PurchaseItem> items) async {
     final db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
-      // 1. Save Purchase
       await txn.insert('purchases', purchase.toMap());
 
-      // 2. Save Items and Update Stock Gudang
       for (var item in items) {
         await txn.insert('purchase_items', item.toMap());
 
-        // Update Stok Gudang
         Product target = _products.firstWhere((p) => p.id == item.productId);
         int newGudang = target.stockGudang + item.qty;
         await txn.update(
@@ -317,6 +389,37 @@ class AppProvider with ChangeNotifier {
     await loadProducts();
   }
 
+  // --- Customer Management ---
+
+  List<Customer> _customersList = [];
+  List<Customer> get customersList => _customersList;
+
+  Future<void> loadCustomers() async {
+    final db = await DatabaseHelper.instance.database;
+    final maps = await db.query('customers', orderBy: 'name ASC');
+    _customersList = maps.map((e) => Customer.fromMap(e)).toList();
+    notifyListeners();
+  }
+
+  Future<void> addCustomer(Customer customer) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.insert('customers', customer.toMap());
+    await loadCustomers();
+  }
+
+  Future<void> updateCustomer(Customer customer) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.update('customers', customer.toMap(), where: 'id = ?', whereArgs: [customer.id]);
+    await loadCustomers();
+  }
+
+  Future<void> deleteCustomer(String id) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.delete('customers', where: 'id = ?', whereArgs: [id]);
+    if (_selectedCustomer?.id == id) _selectedCustomer = null;
+    await loadCustomers();
+  }
+
   // --- Transaction History ---
   List<Map<String, dynamic>> _transactionHistory = [];
   List<Map<String, dynamic>> get transactionHistory => _transactionHistory;
@@ -324,25 +427,35 @@ class AppProvider with ChangeNotifier {
   Future<void> loadTransactionHistory() async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> txns = await db.rawQuery('''
-      SELECT t.id, t.date, t.total, u.username as cashier
+      SELECT t.id, t.date, t.total, t.discount, t.paymentMethod, t.customerId,
+             u.username as cashier, c.name as customerName
       FROM transactions t
       LEFT JOIN users u ON t.userId = u.id
+      LEFT JOIN customers c ON t.customerId = c.id
       ORDER BY t.date DESC
     ''');
 
     List<Map<String, dynamic>> history = [];
-    
+
     for (var tx in txns) {
       final itemsQuery = await db.rawQuery('''
-        SELECT ti.qty, p.name, p.emoji
+        SELECT ti.qty, ti.price, ti.discount, p.name, p.emoji
         FROM transaction_items ti
         LEFT JOIN products p ON ti.productId = p.id
         WHERE ti.transactionId = ?
       ''', [tx['id']]);
 
       List<String> itemsList = [];
+      List<Map<String, dynamic>> itemDetails = [];
       for (var item in itemsQuery) {
         itemsList.add('${item['emoji'] ?? ''} ${item['name'] ?? 'Unknown'} x${item['qty']}');
+        itemDetails.add({
+          'name': item['name'] ?? 'Unknown',
+          'emoji': item['emoji'] ?? '📦',
+          'qty': item['qty'],
+          'price': (item['price'] as num).toDouble(),
+          'discount': (item['discount'] as num).toDouble(),
+        });
       }
 
       DateTime date = DateTime.parse(tx['date'].toString());
@@ -353,13 +466,237 @@ class AppProvider with ChangeNotifier {
         'time': timeStr,
         'dateObj': date,
         'amount': tx['total'],
+        'discount': tx['discount'],
         'cashier': tx['cashier'] ?? 'Admin',
-        'method': 'Tunai', // Default for now
+        'method': tx['paymentMethod'] ?? 'Tunai',
+        'customerName': tx['customerName'],
+        'customerId': tx['customerId'],
         'items': itemsList,
+        'itemDetails': itemDetails,
       });
     }
 
     _transactionHistory = history;
     notifyListeners();
+  }
+
+  // --- Void Transaction ---
+  Future<bool> voidTransaction(String transactionId, String reason) async {
+    final db = await DatabaseHelper.instance.database;
+
+    try {
+      // Get transaction items
+      final items = await db.rawQuery('''
+        SELECT ti.productId, ti.qty
+        FROM transaction_items ti
+        WHERE ti.transactionId = ?
+      ''', [transactionId]);
+
+      await db.transaction((txn) async {
+        // 1. Record void
+        await txn.insert('void_transactions', {
+          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+          'transactionId': transactionId,
+          'date': DateTime.now().toIso8601String(),
+          'reason': reason,
+          'userId': _currentUser?.id ?? '1',
+          'type': 'void',
+        });
+
+        // 2. Return stock
+        for (var item in items) {
+          final productId = item['productId'] as String;
+          final qty = item['qty'] as int;
+          await txn.rawUpdate(
+            'UPDATE products SET stockDisplay = stockDisplay + ? WHERE id = ?',
+            [qty, productId],
+          );
+        }
+
+        // 3. Delete transaction items and transaction
+        await txn.delete('transaction_items', where: 'transactionId = ?', whereArgs: [transactionId]);
+        await txn.delete('transactions', where: 'id = ?', whereArgs: [transactionId]);
+      });
+
+      await loadProducts();
+      await loadTransactionHistory();
+      return true;
+    } catch (e) {
+      debugPrint('Error voiding transaction: $e');
+      return false;
+    }
+  }
+
+  // --- Dashboard Stats ---
+  Future<Map<String, dynamic>> getDashboardStats() async {
+    final db = await DatabaseHelper.instance.database;
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
+
+    // Today's revenue & transaction count
+    final todayStats = await db.rawQuery('''
+      SELECT 
+        COUNT(*) as count,
+        COALESCE(SUM(total), 0) as revenue,
+        COALESCE(AVG(total), 0) as avgTransaction
+      FROM transactions
+      WHERE date BETWEEN ? AND ?
+    ''', [todayStart, todayEnd]);
+
+    // Hourly data for today
+    final hourlyData = <Map<String, dynamic>>[];
+    for (int h = 0; h < 24; h++) {
+      final hStart = DateTime(now.year, now.month, now.day, h).toIso8601String();
+      final hEnd = DateTime(now.year, now.month, now.day, h, 59, 59).toIso8601String();
+      final result = await db.rawQuery('''
+        SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as count
+        FROM transactions WHERE date BETWEEN ? AND ?
+      ''', [hStart, hEnd]);
+      hourlyData.add({
+        'hour': h,
+        'revenue': (result.first['revenue'] as num).toDouble(),
+        'count': result.first['count'] as int,
+      });
+    }
+
+    // Top products today
+    final topProducts = await db.rawQuery('''
+      SELECT p.name, p.emoji, SUM(ti.qty) as totalQty, SUM(ti.qty * ti.price) as totalRevenue
+      FROM transaction_items ti
+      LEFT JOIN products p ON ti.productId = p.id
+      LEFT JOIN transactions t ON ti.transactionId = t.id
+      WHERE t.date BETWEEN ? AND ?
+      GROUP BY ti.productId
+      ORDER BY totalQty DESC
+      LIMIT 5
+    ''', [todayStart, todayEnd]);
+
+    // Weekly data (last 7 days)
+    final weeklyData = <Map<String, dynamic>>[];
+    for (int d = 6; d >= 0; d--) {
+      final day = now.subtract(Duration(days: d));
+      final dayStart = DateTime(day.year, day.month, day.day).toIso8601String();
+      final dayEnd = DateTime(day.year, day.month, day.day, 23, 59, 59).toIso8601String();
+      final result = await db.rawQuery('''
+        SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as count
+        FROM transactions WHERE date BETWEEN ? AND ?
+      ''', [dayStart, dayEnd]);
+      weeklyData.add({
+        'date': day,
+        'revenue': (result.first['revenue'] as num).toDouble(),
+        'count': result.first['count'] as int,
+      });
+    }
+
+    return {
+      'todayRevenue': (todayStats.first['revenue'] as num).toDouble(),
+      'todayCount': todayStats.first['count'] as int,
+      'todayAvg': (todayStats.first['avgTransaction'] as num).toDouble(),
+      'hourlyData': hourlyData,
+      'topProducts': topProducts,
+      'weeklyData': weeklyData,
+      'lowStockProducts': lowStockProducts,
+    };
+  }
+
+  // --- Reports (Real Data) ---
+  Future<Map<String, dynamic>> getReportData(String period) async {
+    final db = await DatabaseHelper.instance.database;
+    final now = DateTime.now();
+
+    DateTime start;
+    DateTime end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    switch (period) {
+      case 'Hari Ini':
+        start = DateTime(now.year, now.month, now.day);
+        break;
+      case 'Minggu Ini':
+        start = now.subtract(Duration(days: now.weekday - 1));
+        start = DateTime(start.year, start.month, start.day);
+        break;
+      case 'Bulan Ini':
+        start = DateTime(now.year, now.month, 1);
+        break;
+      case 'Tahun Ini':
+        start = DateTime(now.year, 1, 1);
+        break;
+      default:
+        start = DateTime(now.year, now.month, now.day);
+    }
+
+    final startStr = start.toIso8601String();
+    final endStr = end.toIso8601String();
+
+    // Summary
+    final summary = await db.rawQuery('''
+      SELECT 
+        COUNT(*) as count,
+        COALESCE(SUM(total), 0) as revenue,
+        COALESCE(AVG(total), 0) as avgTransaction,
+        COALESCE(SUM(discount), 0) as totalDiscount
+      FROM transactions
+      WHERE date BETWEEN ? AND ?
+    ''', [startStr, endStr]);
+
+    // Total items sold
+    final itemsSold = await db.rawQuery('''
+      SELECT COALESCE(SUM(ti.qty), 0) as totalQty
+      FROM transaction_items ti
+      LEFT JOIN transactions t ON ti.transactionId = t.id
+      WHERE t.date BETWEEN ? AND ?
+    ''', [startStr, endStr]);
+
+    // Top products
+    final topProducts = await db.rawQuery('''
+      SELECT p.name, p.emoji, SUM(ti.qty) as totalQty, 
+             SUM(ti.qty * ti.price) as totalRevenue,
+             SUM(ti.qty * (ti.price - COALESCE(p.costPrice, 0))) as grossProfit
+      FROM transaction_items ti
+      LEFT JOIN products p ON ti.productId = p.id
+      LEFT JOIN transactions t ON ti.transactionId = t.id
+      WHERE t.date BETWEEN ? AND ?
+      GROUP BY ti.productId
+      ORDER BY totalQty DESC
+      LIMIT 5
+    ''', [startStr, endStr]);
+
+    // Daily data (last 7 days or within period)
+    final dailyData = <Map<String, dynamic>>[];
+    const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    for (int d = 6; d >= 0; d--) {
+      final day = now.subtract(Duration(days: d));
+      final dayStart = DateTime(day.year, day.month, day.day).toIso8601String();
+      final dayEnd = DateTime(day.year, day.month, day.day, 23, 59, 59).toIso8601String();
+      final result = await db.rawQuery('''
+        SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as count
+        FROM transactions WHERE date BETWEEN ? AND ?
+      ''', [dayStart, dayEnd]);
+      dailyData.add({
+        'day': dayNames[day.weekday - 1],
+        'amount': (result.first['revenue'] as num).toDouble(),
+        'tx': result.first['count'] as int,
+      });
+    }
+
+    // Payment methods breakdown
+    final paymentBreakdown = await db.rawQuery('''
+      SELECT paymentMethod, COUNT(*) as count, COALESCE(SUM(total), 0) as revenue
+      FROM transactions
+      WHERE date BETWEEN ? AND ?
+      GROUP BY paymentMethod
+    ''', [startStr, endStr]);
+
+    return {
+      'revenue': (summary.first['revenue'] as num).toDouble(),
+      'count': summary.first['count'] as int,
+      'avgTransaction': (summary.first['avgTransaction'] as num).toDouble(),
+      'totalDiscount': (summary.first['totalDiscount'] as num).toDouble(),
+      'totalItemsSold': (itemsSold.first['totalQty'] as num).toInt(),
+      'topProducts': topProducts,
+      'dailyData': dailyData,
+      'paymentBreakdown': paymentBreakdown,
+    };
   }
 }

@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Dari logo: orange utama, navy gelap, hijau daun
-  static const Color sidebar = Color(0xFF1C2B3A);
-  static const Color sidebarActive = Color(0xFF243648);
-  static const Color primary = Color(0xFFF7941D);       // orange logo
-  static const Color primaryDark = Color(0xFFE07D0A);   // orange gelap
-  static const Color primaryLight = Color(0xFFFFB347);  // orange terang
-  static const Color accent = Color(0xFF4A8540);        // hijau daun
-  static const Color accentLight = Color(0xFF5EA352);
+  static const Color sidebar = Color(0xFF1B3A1C); // dark green
+  static const Color sidebarActive = Color(0xFF28522A);
+  static const Color primary = Color(0xFF4A8540);       // hijau daun
+  static const Color primaryDark = Color(0xFF386630);   // hijau gelap
+  static const Color primaryLight = Color(0xFF5EA352);  // hijau terang
+  static const Color accent = Color(0xFF689F38);        // hijau terang/olive
+  static const Color accentLight = Color(0xFF8BC34A);
   static const Color danger = Color(0xFFE53935);
-  static const Color warning = Color(0xFFFFA726);
-  static const Color background = Color(0xFFFFF8F0);    // krem hangat
+  static const Color warning = Color(0xFFFBC02D);       // kuning (bukan orange)
+  static const Color background = Color(0xFFF7FBF7);    // hijau krem sangat terang
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF1C2B3A);   // navy gelap
-  static const Color textSecondary = Color(0xFF7B8794);
-  static const Color border = Color(0xFFEAE0D5);
-  static const Color cardShadow = Color(0x14F7941D);    // shadow orange tipis
-  static const Color orangeLight = Color(0xFFFFF3E0);   // latar orange sangat terang
+  static const Color textPrimary = Color(0xFF1B3A1C);   // dark green text
+  static const Color textSecondary = Color(0xFF7B947E);
+  static const Color border = Color(0xFFE1EAE1);
+  static const Color cardShadow = Color(0x144A8540);    // shadow hijau tipis
+  static const Color primaryLightBg = Color(0xFFE8F5E9);   // latar hijau sangat terang
 }
 
 class AppTheme {

@@ -16,8 +16,10 @@ class SidebarNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final role = Provider.of<AppProvider>(context).currentUser?.role ?? 'Kasir';
+    final provider = Provider.of<AppProvider>(context);
+    final role = provider.currentUser?.role ?? 'Kasir';
     final isAdmin = role == 'Admin';
+    final lowStockCount = provider.lowStockCount;
 
     return Container(
       width: 230,
@@ -26,15 +28,26 @@ class SidebarNav extends StatelessWidget {
         children: [
           _buildHeader(),
           const SizedBox(height: 8),
-          _buildNavItem(0, Icons.point_of_sale_rounded, 'Kasir'),
-          _buildNavItem(1, Icons.inventory_2_rounded, 'Produk'),
-          if (isAdmin) _buildNavItem(7, Icons.local_shipping_rounded, 'Supplier'),
-          _buildNavItem(2, Icons.checklist_rounded, 'Opname'),
-          if (isAdmin) _buildNavItem(3, Icons.bar_chart_rounded, 'Laporan'),
-          _buildNavItem(4, Icons.receipt_long_rounded, 'Riwayat'),
+          // Dashboard
+          _buildNavItem(0, Icons.dashboard_rounded, 'Dashboard'),
+          // Kasir
+          _buildNavItem(1, Icons.point_of_sale_rounded, 'Kasir'),
+          // Produk dengan badge stok menipis
+          _buildNavItemWithBadge(2, Icons.inventory_2_rounded, 'Produk', lowStockCount),
+
+          // Opname
+          _buildNavItem(3, Icons.checklist_rounded, 'Opname'),
+          // Laporan (admin only)
+          if (isAdmin) _buildNavItem(4, Icons.bar_chart_rounded, 'Laporan'),
+          // Riwayat
+          _buildNavItem(5, Icons.receipt_long_rounded, 'Riwayat'),
+          // Supplier (admin only)
+          if (isAdmin) _buildNavItem(8, Icons.local_shipping_rounded, 'Supplier'),
           const Spacer(),
-          if (isAdmin) _buildNavItem(6, Icons.people_rounded, 'Pengguna'),
-          if (isAdmin) _buildNavItem(5, Icons.settings_rounded, 'Pengaturan'),
+          // Pengguna (admin only)
+          if (isAdmin) _buildNavItem(7, Icons.manage_accounts_rounded, 'Pengguna'),
+          // Pengaturan (admin only)
+          if (isAdmin) _buildNavItem(6, Icons.settings_rounded, 'Pengaturan'),
           _buildUserFooter(context),
         ],
       ),
@@ -150,13 +163,76 @@ class SidebarNav extends StatelessWidget {
     );
   }
 
+  Widget _buildNavItemWithBadge(int index, IconData icon, String label, int badgeCount) {
+    final bool isActive = selectedIndex == index;
+    return GestureDetector(
+      onTap: () => onItemSelected(index),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withOpacity(0.18) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: isActive
+              ? Border.all(color: AppColors.primary.withOpacity(0.5), width: 1)
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isActive ? AppColors.primaryLight : const Color(0xFF8FA3B4),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isActive ? Colors.white : const Color(0xFF8FA3B4),
+                  fontSize: 14,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
+            ),
+            if (badgeCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.danger,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$badgeCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              )
+            else if (isActive)
+              Container(
+                width: 5,
+                height: 5,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildUserFooter(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         final username = provider.currentUser?.username ?? 'Admin';
         final role = provider.currentUser?.role ?? 'Kasir';
         final initial = username.isNotEmpty ? username[0].toUpperCase() : 'A';
-        
+
         return Container(
           margin: const EdgeInsets.all(12),
           padding: const EdgeInsets.all(12),

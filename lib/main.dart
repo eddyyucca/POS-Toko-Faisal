@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'theme/app_theme.dart';
 import 'widgets/sidebar_nav.dart';
+import 'screens/dashboard_screen.dart';
 import 'screens/pos_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/reports_screen.dart';
@@ -15,9 +16,12 @@ import 'screens/suppliers_screen.dart';
 import 'providers/app_provider.dart';
 import 'database/database_helper.dart';
 
+import 'package:intl/date_symbol_data_local.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await initializeDateFormatting('id_ID', null);
+
   // Initialize window manager for fullscreen
   await windowManager.ensureInitialized();
 
@@ -69,27 +73,39 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
 
   static const List<_NavPage> _pages = [
+    _NavPage(title: 'Dashboard', icon: Icons.dashboard_rounded),
     _NavPage(title: 'Kasir', icon: Icons.point_of_sale_rounded),
     _NavPage(title: 'Produk', icon: Icons.inventory_2_rounded),
     _NavPage(title: 'Opname', icon: Icons.checklist_rounded),
     _NavPage(title: 'Laporan', icon: Icons.bar_chart_rounded),
     _NavPage(title: 'Riwayat', icon: Icons.receipt_long_rounded),
     _NavPage(title: 'Pengaturan', icon: Icons.settings_rounded),
-    _NavPage(title: 'Pengguna', icon: Icons.people_rounded),
+    _NavPage(title: 'Pengguna', icon: Icons.manage_accounts_rounded),
     _NavPage(title: 'Supplier', icon: Icons.local_shipping_rounded),
   ];
 
   Widget get _currentScreen {
     switch (_selectedIndex) {
-      case 0: return const PosScreen();
-      case 1: return const ProductsScreen();
-      case 2: return const OpnameScreen();
-      case 3: return const ReportsScreen();
-      case 4: return const HistoryScreen();
-      case 5: return const SettingsScreen();
-      case 6: return const UsersScreen();
-      case 7: return const SuppliersScreen();
-      default: return const PosScreen();
+      case 0:
+        return const DashboardScreen();
+      case 1:
+        return const PosScreen();
+      case 2:
+        return const ProductsScreen();
+      case 3:
+        return const OpnameScreen();
+      case 4:
+        return const ReportsScreen();
+      case 5:
+        return const HistoryScreen();
+      case 6:
+        return const SettingsScreen();
+      case 7:
+        return const UsersScreen();
+      case 8:
+        return const SuppliersScreen();
+      default:
+        return const DashboardScreen();
     }
   }
 
@@ -134,7 +150,7 @@ class _MainShellState extends State<MainShell> {
           Container(
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: AppColors.orangeLight,
+              color: AppColors.primaryLightBg,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(page.icon, size: 16, color: AppColors.primary),
@@ -149,7 +165,7 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
           const Spacer(),
-          _buildStatusBadge(Icons.wifi_rounded, 'Online', AppColors.accent),
+          _buildStatusBadge(Icons.wifi_rounded, 'Online', AppColors.primary),
           const SizedBox(width: 12),
           _buildStatusBadge(Icons.print_rounded, 'Printer OK', AppColors.primary),
           const SizedBox(width: 16),

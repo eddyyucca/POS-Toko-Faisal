@@ -116,7 +116,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     value: selectedProduct,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
                     hint: const Text('Pilih Produk'),
-                    items: provider.products.map((p) => DropdownMenuItem(value: p, child: Text('${p.emoji} ${p.name}'))).toList(),
+                    items: provider.products.map((p) => DropdownMenuItem(value: p, child: Text(p.name))).toList(),
                     onChanged: (v) => setStateSB(() => selectedProduct = v),
                   ),
                   const SizedBox(height: 12),
@@ -228,8 +228,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                       final s = suppliers[index];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: AppColors.accent.withOpacity(0.1),
-                          child: const Icon(Icons.local_shipping_rounded, color: AppColors.accent),
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          child: const Icon(Icons.local_shipping_rounded, color: AppColors.primary),
                         ),
                         title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text('${s.phone} • ${s.address}'),
@@ -241,7 +241,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                               icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 16),
                               label: const Text('Kulakan'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.accent,
+                                backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                               ),

@@ -44,7 +44,7 @@ Name: "desktopicon"; Description: "Buat shortcut di Desktop"
 
 [Files]
 Source: "{#SourceDir}\desktop.exe";         DestDir: "{app}"; DestName: "{#AppExeName}"; Flags: ignoreversion
-Source: "{#SourceDir}\flutter_windows.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\data\*";              DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

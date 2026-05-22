@@ -202,7 +202,7 @@ class _OpnameScreenState extends State<OpnameScreen> {
             flex: 3,
             child: Row(
               children: [
-                Text(product.emoji, style: const TextStyle(fontSize: 16)),
+                const Icon(Icons.inventory_2_rounded, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(child: Text(product.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis)),
               ],

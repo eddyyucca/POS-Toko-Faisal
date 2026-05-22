@@ -7,7 +7,7 @@ import '../utils/receipt_generator.dart';
 
 class PaymentDialog extends StatefulWidget {
   final double total;
-  final VoidCallback onSuccess;
+  final Function(String paymentMethod) onSuccess;
 
   const PaymentDialog({super.key, required this.total, required this.onSuccess});
 
@@ -201,7 +201,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.08),
+                  color: AppColors.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -210,7 +210,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     const Text('Kembalian', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     Text(
                       _formatPrice(change),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.accent),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary),
                     ),
                   ],
                 ),
@@ -223,7 +223,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
             child: ElevatedButton(
               onPressed: _canPay() ? _processPayment : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.border,
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -248,10 +248,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.accent.withOpacity(0.1),
+              color: AppColors.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_circle_rounded, size: 48, color: AppColors.accent),
+            child: const Icon(Icons.check_circle_rounded, size: 48, color: AppColors.primary),
           ),
           const SizedBox(height: 20),
           const Text('Pembayaran Berhasil!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -302,7 +302,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    widget.onSuccess();
+                    widget.onSuccess(_methods[_selectedMethod]['label'] as String);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -326,7 +326,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
     return true;
   }
 
-  void _processPayment() => setState(() => _paymentDone = true);
+  void _processPayment() {
+    setState(() => _paymentDone = true);
+  }
 
   String _formatPrice(double price) {
     final parts = price.toInt().toString().split('').reversed.toList();
