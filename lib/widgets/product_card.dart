@@ -68,7 +68,7 @@ class ProductListTile extends StatelessWidget {
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
-                  'Stok: ${product.stockDisplay}',
+                  'Stok: ${product.stockDisplay} ${product.unit}',
                   style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                 ),
               ),

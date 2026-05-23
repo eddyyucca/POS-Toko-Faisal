@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/product.dart';
@@ -6,6 +7,7 @@ import '../models/supplier.dart';
 import '../models/purchase.dart';
 import '../models/customer.dart';
 import '../database/database_helper.dart';
+import '../services/sync_service.dart';
 
 class AppProvider with ChangeNotifier {
   User? _currentUser;
@@ -13,6 +15,88 @@ class AppProvider with ChangeNotifier {
 
   List<Product> _products = [];
   List<Product> get products => _products;
+
+  // --- Sync ---
+  final SyncService _syncService = SyncService();
+  SyncService get syncService => _syncService;
+
+  bool _isSyncing = false;
+  bool get isSyncing => _isSyncing;
+
+  String _syncStatus = '';
+  String get syncStatus => _syncStatus;
+
+  double _syncProgress = 0.0;
+  double get syncProgress => _syncProgress;
+
+  int _pendingSyncCount = 0;
+  int get pendingSyncCount => _pendingSyncCount;
+
+  DateTime? get lastSyncTime => _syncService.lastSyncTime;
+  String? get lastSyncError => _syncService.lastError;
+
+  /// Initialize sync service (call after login)
+  Future<void> initSync() async {
+    // Load server URL from settings
+    final serverUrl = getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxatritamaindonesia.com/api');
+    _syncService.setServerUrl(serverUrl);
+    await _syncService.loadLastSyncTime();
+    await updatePendingCount();
+
+    // Set up callbacks
+    _syncService.onStatusChanged = (status) {
+      _syncStatus = status;
+      notifyListeners();
+    };
+    _syncService.onProgressChanged = (progress) {
+      _syncProgress = progress;
+      notifyListeners();
+    };
+
+    // Auto-sync on startup
+    performSync().catchError((_) {});
+  }
+
+  /// Update the count of pending sync records
+  Future<void> updatePendingCount() async {
+    _pendingSyncCount = await _syncService.getTotalPendingCount();
+    notifyListeners();
+  }
+
+  /// Perform full sync
+  Future<SyncResult> performSync() async {
+    _isSyncing = true;
+    _syncStatus = 'Memulai sinkronisasi...';
+    notifyListeners();
+
+    final result = await _syncService.syncAll();
+
+    _isSyncing = false;
+    if (result.success) {
+      _syncStatus = 'Sinkronisasi berhasil!';
+      // Reload data after sync
+      await loadProducts();
+      await loadCustomers();
+      await loadSuppliers();
+    } else {
+      _syncStatus = result.message;
+    }
+    await updatePendingCount();
+    notifyListeners();
+
+    return result;
+  }
+
+  /// Check server connection
+  Future<bool> checkSyncConnection() async {
+    return await _syncService.checkConnection();
+  }
+
+  /// Update sync server URL
+  Future<void> setSyncServerUrl(String url) async {
+    _syncService.setServerUrl(url);
+    await saveSetting('sync_server_url', url);
+  }
 
   final List<CartItem> _cartItems = [];
   List<CartItem> get cartItems => _cartItems;
@@ -180,7 +264,8 @@ class AppProvider with ChangeNotifier {
     if (_cartItems.isEmpty) return;
 
     final db = await DatabaseHelper.instance.database;
-    final transactionId = 'TRX-${DateTime.now().millisecondsSinceEpoch}';
+    final randSuffix = Random().nextInt(99999);
+    final transactionId = 'TRX-${DateTime.now().millisecondsSinceEpoch}-$randSuffix';
     final dateStr = DateTime.now().toIso8601String();
     final String userId = _currentUser?.id ?? '1';
 
@@ -195,6 +280,7 @@ class AppProvider with ChangeNotifier {
           'userId': userId,
           'paymentMethod': paymentMethod,
           'customerId': _selectedCustomer?.id,
+          'sync_status': 'pending',
         });
 
         // 2. Insert Items & Update Stock
@@ -206,6 +292,7 @@ class AppProvider with ChangeNotifier {
             'qty': item.quantity,
             'price': item.product.price,
             'discount': item.product.price - item.unitPriceAfterDiscount,
+            'sync_status': 'pending',
           });
 
           // Kurangi stok display
@@ -236,6 +323,10 @@ class AppProvider with ChangeNotifier {
       clearCart();
       await loadProducts();
       await loadCustomers();
+      await updatePendingCount();
+
+      // Auto-sync after checkout
+      performSync().catchError((_) {});
     } catch (e) {
       debugPrint('Error during checkout: $e');
     }
@@ -267,19 +358,24 @@ class AppProvider with ChangeNotifier {
 
   Future<void> addProduct(Product product) async {
     final db = await DatabaseHelper.instance.database;
-    await db.insert('products', product.toMap());
+    final map = product.toMap();
+    map['sync_status'] = 'pending';
+    await db.insert('products', map);
     await loadProducts();
   }
 
   Future<void> updateProduct(Product product) async {
     final db = await DatabaseHelper.instance.database;
+    final map = product.toMap();
+    map['sync_status'] = 'pending';
     await db.update(
       'products',
-      product.toMap(),
+      map,
       where: 'id = ?',
       whereArgs: [product.id],
     );
     await loadProducts();
+    await updatePendingCount();
   }
 
   Future<void> deleteProduct(String productId) async {
@@ -339,7 +435,7 @@ class AppProvider with ChangeNotifier {
   List<Supplier> _suppliersList = [];
   List<Supplier> get suppliersList => _suppliersList;
 
-  List<Purchase> _purchasesList = [];
+  final List<Purchase> _purchasesList = [];
   List<Purchase> get purchasesList => _purchasesList;
 
   Future<void> loadSuppliers() async {
@@ -501,6 +597,7 @@ class AppProvider with ChangeNotifier {
           'reason': reason,
           'userId': _currentUser?.id ?? '1',
           'type': 'void',
+          'sync_status': 'pending',
         });
 
         // 2. Return stock

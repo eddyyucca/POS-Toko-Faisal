@@ -369,7 +369,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       {
         'label': 'Total Pendapatan',
         'value': _formatPrice(_revenue),
-        'sub': hasData ? '${_count} transaksi' : 'Belum ada transaksi',
+        'sub': hasData ? '$_count transaksi' : 'Belum ada transaksi',
         'icon': Icons.attach_money_rounded,
         'color': AppColors.primary,
         'hasData': hasData,
@@ -435,7 +435,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
+                      color: color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -451,8 +451,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                     ),
                     decoration: BoxDecoration(
                       color: cardHasData
-                          ? AppColors.primary.withOpacity(0.1)
-                          : AppColors.border.withOpacity(0.5),
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : AppColors.border.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -658,7 +658,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                           ? [
                                               BoxShadow(
                                                 color: AppColors.primary
-                                                    .withOpacity(0.25),
+                                                    .withValues(alpha: 0.25),
                                                 blurRadius: 6,
                                                 offset: const Offset(0, 2),
                                               ),
@@ -805,7 +805,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                       height: 26,
                       decoration: BoxDecoration(
                         color: i < 3
-                            ? rankColors[i].withOpacity(0.15)
+                            ? rankColors[i].withValues(alpha: 0.15)
                             : AppColors.background,
                         borderRadius: BorderRadius.circular(7),
                       ),
@@ -955,7 +955,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: const Icon(
@@ -1039,7 +1039,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: color.withOpacity(0.2),
+                      color: color.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Column(
@@ -1051,7 +1051,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                             width: 34,
                             height: 34,
                             decoration: BoxDecoration(
-                              color: color.withOpacity(0.12),
+                              color: color.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(icon, color: color, size: 17),
@@ -1096,7 +1096,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
                           value: pct / 100,
-                          backgroundColor: color.withOpacity(0.1),
+                          backgroundColor: color.withValues(alpha: 0.1),
                           valueColor:
                               AlwaysStoppedAnimation<Color>(color),
                           minHeight: 5,

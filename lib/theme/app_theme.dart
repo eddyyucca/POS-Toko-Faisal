@@ -10,6 +10,7 @@ class AppColors {
   static const Color accentLight = Color(0xFF8BC34A);
   static const Color danger = Color(0xFFE53935);
   static const Color warning = Color(0xFFFBC02D);       // kuning (bukan orange)
+  static const Color success = Color(0xFF4CAF50);       // hijau sukses
   static const Color background = Color(0xFFF7FBF7);    // hijau krem sangat terang
   static const Color surface = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF1B3A1C);   // dark green text

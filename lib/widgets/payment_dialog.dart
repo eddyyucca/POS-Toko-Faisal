@@ -94,9 +94,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.06),
+              color: AppColors.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -123,7 +123,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     margin: EdgeInsets.only(right: i < _methods.length - 1 ? 8 : 0),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: sel ? (m['color'] as Color).withOpacity(0.08) : AppColors.background,
+                      color: sel ? (m['color'] as Color).withValues(alpha: 0.08) : AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: sel ? (m['color'] as Color) : AppColors.border,
@@ -201,7 +201,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -248,7 +248,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.check_circle_rounded, size: 48, color: AppColors.primary),
@@ -265,7 +265,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.1),
+                color: AppColors.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(

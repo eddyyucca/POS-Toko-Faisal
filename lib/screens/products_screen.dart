@@ -183,16 +183,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
         margin: const EdgeInsets.fromLTRB(24, 12, 24, 0),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.warning.withOpacity(0.12),
+          color: AppColors.warning.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.warning.withOpacity(0.5)),
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.2),
+                color: AppColors.warning.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.warning_amber_rounded,
@@ -297,7 +297,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2))
         ],
@@ -311,7 +311,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 : ListView.separated(
                     controller: _scrollController,
                     itemCount: products.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         const Divider(height: 1, color: AppColors.border),
                     itemBuilder: (_, i) =>
                         _buildTableRow(products[i], i + 1),
@@ -438,9 +438,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
       key: rowKey,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
       color: dangerDisplay
-          ? AppColors.danger.withOpacity(0.05)
+          ? AppColors.danger.withValues(alpha: 0.05)
           : warningDisplay
-              ? AppColors.warning.withOpacity(0.05)
+              ? AppColors.warning.withValues(alpha: 0.05)
               : null,
       child: Row(
         children: [
@@ -609,7 +609,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.border.withOpacity(0.6),
+          color: AppColors.border.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(5),
         ),
         child: const Text(
@@ -627,13 +627,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
     final Color textColor;
 
     if (margin > 30) {
-      badgeColor = AppColors.primary.withOpacity(0.12);
+      badgeColor = AppColors.primary.withValues(alpha: 0.12);
       textColor = AppColors.primary;
     } else if (margin >= 10) {
-      badgeColor = AppColors.warning.withOpacity(0.15);
+      badgeColor = AppColors.warning.withValues(alpha: 0.15);
       textColor = const Color(0xFF7A4F00);
     } else {
-      badgeColor = AppColors.danger.withOpacity(0.10);
+      badgeColor = AppColors.danger.withValues(alpha: 0.10);
       textColor = AppColors.danger;
     }
 
@@ -679,7 +679,7 @@ class _ActionBtn extends StatelessWidget {
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(7),
         ),
         child: Icon(icon, size: 14, color: color),

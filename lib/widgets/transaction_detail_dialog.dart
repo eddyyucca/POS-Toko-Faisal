@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_provider.dart';
-import '../utils/receipt_generator.dart';
-import '../models/user.dart';
 
 class TransactionDetailDialog extends StatefulWidget {
   final Map<String, dynamic> tx;
@@ -83,7 +81,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.danger.withOpacity(0.1),
+                color: AppColors.danger.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(Icons.warning_amber_rounded,
@@ -111,10 +109,10 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.danger.withOpacity(0.06),
+                    color: AppColors.danger.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: AppColors.danger.withOpacity(0.2), width: 1),
+                        color: AppColors.danger.withValues(alpha: 0.2), width: 1),
                   ),
                   child: Row(
                     children: [
@@ -366,7 +364,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.18),
+              color: AppColors.primary.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.receipt_long_rounded,
@@ -456,7 +454,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: methodColor.withOpacity(0.12),
+                      color: methodColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child:
@@ -479,7 +477,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: methodColor.withOpacity(0.12),
+                            color: methodColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -530,7 +528,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: iconColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: iconColor, size: 16),
@@ -682,7 +680,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                   decoration: BoxDecoration(
                     color: idx.isEven
                         ? AppColors.surface
-                        : AppColors.background.withOpacity(0.5),
+                        : AppColors.background.withValues(alpha: 0.5),
                     borderRadius: isLast
                         ? const BorderRadius.vertical(
                             bottom: Radius.circular(11))
@@ -780,7 +778,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
       decoration: BoxDecoration(
         color: AppColors.primaryLightBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
@@ -803,7 +801,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
               label: 'Diskon',
               value: '-${_formatPrice(discount)}',
               labelStyle: TextStyle(
-                color: AppColors.danger.withOpacity(0.85),
+                color: AppColors.danger.withValues(alpha: 0.85),
                 fontSize: 13,
               ),
               valueStyle: TextStyle(
@@ -814,7 +812,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
             ),
           ],
           const SizedBox(height: 10),
-          Divider(color: AppColors.primary.withOpacity(0.2), height: 1),
+          Divider(color: AppColors.primary.withValues(alpha: 0.2), height: 1),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -934,7 +932,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                   disabledForegroundColor:
-                      AppColors.danger.withOpacity(0.5),
+                      AppColors.danger.withValues(alpha: 0.5),
                   disabledMouseCursor: SystemMouseCursors.wait,
                 ),
               ),

@@ -175,9 +175,9 @@ class _PosScreenState extends State<PosScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -237,7 +237,7 @@ class _PosScreenState extends State<PosScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.white.withOpacity(0.25) : AppColors.border,
+                          color: isSelected ? Colors.white.withValues(alpha: 0.25) : AppColors.border,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(

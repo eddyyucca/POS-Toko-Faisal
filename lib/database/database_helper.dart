@@ -30,7 +30,7 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 5,
+        version: 7,
         onCreate: _createDB,
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 5) {
@@ -47,6 +47,30 @@ class DatabaseHelper {
             await db.execute('DROP TABLE IF EXISTS customers');
             await db.execute('DROP TABLE IF EXISTS void_transactions');
             await _createDB(db, newVersion);
+          }
+          if (oldVersion < 6) {
+            // Add sync_status column to all tables for sync tracking
+            final tables = [
+              'users', 'products', 'transactions', 'transaction_items',
+              'stock_opname', 'suppliers', 'purchases', 'purchase_items',
+              'customers', 'void_transactions',
+            ];
+            for (final table in tables) {
+              try {
+                await db.execute(
+                  "ALTER TABLE $table ADD COLUMN sync_status TEXT DEFAULT 'synced'"
+                );
+              } catch (_) {
+                // Column might already exist
+              }
+            }
+          }
+          if (oldVersion < 7) {
+            try {
+              await db.execute(
+                "ALTER TABLE products ADD COLUMN unit TEXT DEFAULT 'Pcs'"
+              );
+            } catch (_) {}
           }
         },
 
@@ -65,7 +89,8 @@ class DatabaseHelper {
         id $idType,
         username $textType,
         password $textType,
-        role $textType
+        role $textType,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -82,7 +107,9 @@ class DatabaseHelper {
         maxStock $integerType,
         emoji $textType,
         discountPercent $realType,
-        sku TEXT DEFAULT ""
+        sku TEXT DEFAULT "",
+        unit TEXT DEFAULT 'Pcs',
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -94,7 +121,8 @@ class DatabaseHelper {
         discount $realType,
         userId $textType,
         paymentMethod TEXT DEFAULT "Tunai",
-        customerId TEXT
+        customerId TEXT,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -105,7 +133,8 @@ class DatabaseHelper {
         productId $textType,
         qty $integerType,
         price $realType,
-        discount $realType
+        discount $realType,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -120,7 +149,8 @@ class DatabaseHelper {
         actualDisplay $integerType,
         difference $integerType,
         notes TEXT,
-        userId $textType
+        userId $textType,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -129,7 +159,8 @@ class DatabaseHelper {
         id $idType,
         name $textType,
         phone $textType,
-        address $textType
+        address $textType,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -140,7 +171,8 @@ class DatabaseHelper {
         supplierId $textType,
         total $realType,
         notes TEXT,
-        userId $textType
+        userId $textType,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -150,7 +182,8 @@ class DatabaseHelper {
         purchaseId $textType,
         productId $textType,
         qty $integerType,
-        costPrice $realType
+        costPrice $realType,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -169,7 +202,8 @@ class DatabaseHelper {
         email TEXT DEFAULT "",
         points INTEGER NOT NULL DEFAULT 0,
         totalSpend REAL NOT NULL DEFAULT 0.0,
-        createdAt $textType
+        createdAt $textType,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 
@@ -180,7 +214,8 @@ class DatabaseHelper {
         date $textType,
         reason $textType,
         userId $textType,
-        type $textType
+        type $textType,
+        sync_status TEXT DEFAULT 'synced'
       )
     ''');
 

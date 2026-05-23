@@ -18,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _emailCtrl = TextEditingController();
   final TextEditingController _taxPercCtrl = TextEditingController();
   final TextEditingController _footerCtrl = TextEditingController();
+  final TextEditingController _syncUrlCtrl = TextEditingController();
 
   // Switch states
   bool _printReceipt = true;
@@ -46,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _emailCtrl.text = provider.getSetting('store_email', defaultValue: '');
     _taxPercCtrl.text = provider.getSetting('tax_percent', defaultValue: '11');
     _footerCtrl.text = provider.getSetting('receipt_footer', defaultValue: '');
+    _syncUrlCtrl.text = provider.getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxatritamaindonesia.com/api');
     setState(() {
       _taxEnabled = provider.getSetting('tax_enabled', defaultValue: 'true') == 'true';
       _printReceipt = provider.getSetting('print_receipt', defaultValue: 'true') == 'true';
@@ -61,6 +63,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _emailCtrl.dispose();
     _taxPercCtrl.dispose();
     _footerCtrl.dispose();
+    _syncUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -78,6 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'tax_enabled': _taxEnabled.toString(),
         'print_receipt': _printReceipt.toString(),
         'sound_enabled': _soundEnabled.toString(),
+        'sync_server_url': _syncUrlCtrl.text.trim(),
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -239,6 +243,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _buildPrinterSelector(),
                     ]),
                     const SizedBox(height: 20),
+                    Consumer<AppProvider>(
+                      builder: (context, provider, child) => _buildSyncSection(provider),
+                    ),
+                    const SizedBox(height: 20),
                     // Info card
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -301,6 +309,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSyncSection(AppProvider provider) {
+    return _buildSection('Sinkronisasi Data', [
+      _buildTextField('URL Server API', 'cth. https://tokofaisal.fluxatritamaindonesia.com/api', Icons.cloud_sync_rounded, _syncUrlCtrl),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Data Tertunda: ${provider.pendingSyncCount}',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                ),
+                Text(
+                  provider.lastSyncTime != null
+                      ? 'Terakhir: ${provider.lastSyncTime!.toString().split('.').first}'
+                      : 'Belum pernah sinkronisasi',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: provider.isSyncing
+                ? null
+                : () async {
+                    // Update URL first
+                    await provider.setSyncServerUrl(_syncUrlCtrl.text.trim());
+                    // Perform sync
+                    final result = await provider.performSync();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result.message),
+                          backgroundColor: result.success ? AppColors.primary : AppColors.danger,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          margin: const EdgeInsets.all(16),
+                        ),
+                      );
+                    }
+                  },
+            icon: provider.isSyncing
+                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.sync_rounded, size: 16),
+            label: Text(provider.isSyncing ? 'Proses...' : 'Sync'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+      if (provider.syncStatus.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            provider.syncStatus,
+            style: TextStyle(fontSize: 11, color: provider.isSyncing ? AppColors.primary : AppColors.textSecondary),
+          ),
+        ),
+    ]);
   }
 
   Widget _buildSection(String title, List<Widget> children) {

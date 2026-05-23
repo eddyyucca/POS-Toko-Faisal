@@ -1,5 +1,5 @@
 #define AppName "Toko Faisal POS"
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.2"
 #define AppPublisher "PT Fluxa Tritama Indonesia"
 #define AppExeName "TokoFaisalPOS.exe"
 #define SourceDir "C:\xampp\htdocs\desktop\desktop\build\windows\x64\runner\Release"

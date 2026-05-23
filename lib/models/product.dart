@@ -11,6 +11,7 @@ class Product {
   final String emoji;
   final double discountPercent;
   final String sku;
+  final String unit;
 
   Product({
     required this.id,
@@ -25,6 +26,7 @@ class Product {
     required this.emoji,
     this.discountPercent = 0.0,
     this.sku = '',
+    this.unit = 'Pcs',
   });
 
   int get totalStock => stockGudang + stockDisplay;
@@ -48,6 +50,7 @@ class Product {
       emoji: map['emoji'],
       discountPercent: (map['discountPercent'] as num?)?.toDouble() ?? 0.0,
       sku: map['sku'] as String? ?? '',
+      unit: map['unit'] as String? ?? 'Pcs',
     );
   }
 
@@ -65,6 +68,7 @@ class Product {
       'emoji': emoji,
       'discountPercent': discountPercent,
       'sku': sku,
+      'unit': unit,
     };
   }
 
@@ -81,6 +85,7 @@ class Product {
     String? emoji,
     double? discountPercent,
     String? sku,
+    String? unit,
   }) {
     return Product(
       id: id ?? this.id,
@@ -95,6 +100,7 @@ class Product {
       emoji: emoji ?? this.emoji,
       discountPercent: discountPercent ?? this.discountPercent,
       sku: sku ?? this.sku,
+      unit: unit ?? this.unit,
     );
   }
 }

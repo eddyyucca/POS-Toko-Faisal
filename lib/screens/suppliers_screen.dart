@@ -113,7 +113,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                   const Text('Pilih Produk yang Masuk Gudang:'),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<Product>(
-                    value: selectedProduct,
+                    initialValue: selectedProduct,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
                     hint: const Text('Pilih Produk'),
                     items: provider.products.map((p) => DropdownMenuItem(value: p, child: Text(p.name))).toList(),
@@ -223,12 +223,12 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                   ),
                   child: ListView.separated(
                     itemCount: suppliers.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+                    separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.border),
                     itemBuilder: (context, index) {
                       final s = suppliers[index];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                           child: const Icon(Icons.local_shipping_rounded, color: AppColors.primary),
                         ),
                         title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),

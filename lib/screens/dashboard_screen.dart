@@ -258,7 +258,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           decoration: BoxDecoration(
             color: AppColors.primaryLightBg,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -465,7 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             'Data produk terlaris akan muncul setelah ada penjualan',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppColors.textSecondary.withOpacity(0.7),
+              color: AppColors.textSecondary.withValues(alpha: 0.7),
               fontSize: 11,
             ),
           ),
@@ -492,7 +492,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: rank <= 3 ? rankColor.withOpacity(0.15) : AppColors.border,
+              color: rank <= 3 ? rankColor.withValues(alpha: 0.15) : AppColors.border,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
@@ -553,12 +553,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildLowStockAlert(List<Product> lowStock) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.danger.withOpacity(0.04),
+        color: AppColors.danger.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.danger.withOpacity(0.25)),
+        border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.danger.withOpacity(0.06),
+            color: AppColors.danger.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -640,8 +640,8 @@ class _DashboardScreenState extends State<DashboardScreen>
             height: 34,
             decoration: BoxDecoration(
               color: isEmpty
-                  ? AppColors.danger.withOpacity(0.12)
-                  : AppColors.warning.withOpacity(0.12),
+                  ? AppColors.danger.withValues(alpha: 0.12)
+                  : AppColors.warning.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
@@ -700,9 +700,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               padding:
                   const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.15),
+                color: AppColors.warning.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.warning.withOpacity(0.4)),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
               ),
               child: Text(
                 '${product.stockDisplay}',
@@ -774,10 +774,10 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -804,7 +804,7 @@ class _StatCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -842,7 +842,7 @@ class _StatCard extends StatelessWidget {
             subValue,
             style: TextStyle(
               fontSize: 11,
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha: 0.8),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -960,8 +960,8 @@ class _WeeklyBarChartState extends State<_WeeklyBarChart>
                                         ]
                                       : [
                                           AppColors.primaryLight
-                                              .withOpacity(0.7),
-                                          AppColors.primary.withOpacity(0.5),
+                                              .withValues(alpha: 0.7),
+                                          AppColors.primary.withValues(alpha: 0.5),
                                         ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
@@ -975,7 +975,7 @@ class _WeeklyBarChartState extends State<_WeeklyBarChart>
                               ? [
                                   BoxShadow(
                                     color:
-                                        AppColors.primary.withOpacity(0.3),
+                                        AppColors.primary.withValues(alpha: 0.3),
                                     blurRadius: 6,
                                     offset: const Offset(0, 2),
                                   ),

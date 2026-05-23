@@ -45,7 +45,7 @@ class _UsersScreenState extends State<UsersScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: role,
+                initialValue: role,
                 decoration: const InputDecoration(labelText: 'Role', border: OutlineInputBorder()),
                 items: ['Admin', 'Kasir'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                 onChanged: (v) => setStateSB(() => role = v!),
@@ -147,7 +147,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   ),
                   child: ListView.separated(
                     itemCount: users.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+                    separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.border),
                     itemBuilder: (context, index) {
                       final u = users[index];
                       final isCurrent = provider.currentUser?.id == u.id;

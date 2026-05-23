@@ -29,6 +29,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   late TextEditingController _discountCtrl;
   late TextEditingController _skuCtrl;
   late TextEditingController _costPriceCtrl;
+  late TextEditingController _unitCtrl;
 
   @override
   void initState() {
@@ -45,6 +46,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _discountCtrl = TextEditingController(text: p?.discountPercent.toString() ?? '0');
     _skuCtrl = TextEditingController(text: p?.sku ?? '');
     _costPriceCtrl = TextEditingController(text: p != null ? p.costPrice.toInt().toString() : '0');
+    _unitCtrl = TextEditingController(text: p?.unit ?? 'Pcs');
 
     // Listen for price/costPrice changes to rebuild margin indicator
     _priceCtrl.addListener(_onPriceChanged);
@@ -68,6 +70,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _discountCtrl.dispose();
     _skuCtrl.dispose();
     _costPriceCtrl.dispose();
+    _unitCtrl.dispose();
     super.dispose();
   }
 
@@ -85,6 +88,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
         emoji: _emojiCtrl.text.isEmpty ? '📦' : _emojiCtrl.text,
         discountPercent: double.tryParse(_discountCtrl.text) ?? 0.0,
         sku: _skuCtrl.text,
+        unit: _unitCtrl.text.isEmpty ? 'Pcs' : _unitCtrl.text,
         costPrice: double.tryParse(_costPriceCtrl.text) ?? 0.0,
       );
       widget.onSave(newProduct);
@@ -138,9 +142,11 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   children: [
                     Expanded(child: _buildCategoryField(context)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildTextField('Harga Jual (Rp)', _priceCtrl, isNumber: true, isRequired: true)),
+                    Expanded(child: _buildUnitField(context)),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _buildTextField('Harga Jual (Rp)', _priceCtrl, isNumber: true, isRequired: true),
                 const SizedBox(height: 16),
                 // SKU and Cost Price row
                 Row(
@@ -217,9 +223,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: indicatorColor.withOpacity(0.08),
+        color: indicatorColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: indicatorColor.withOpacity(0.3)),
+        border: Border.all(color: indicatorColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -246,7 +252,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
             '($label)',
             style: TextStyle(
               fontSize: 12,
-              color: indicatorColor.withOpacity(0.8),
+              color: indicatorColor.withValues(alpha: 0.8),
             ),
           ),
         ],
@@ -349,6 +355,63 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               onSelected: (String? selection) {
                 if (selection != null) {
                   _categoryCtrl.text = selection;
+                }
+              },
+            );
+          }
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUnitField(BuildContext context) {
+    final units = ['Pcs', 'Kg', 'Gram', 'Liter', 'Box', 'Karton', 'Lusin', 'Pack'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Satuan (Unit)',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return DropdownMenu<String>(
+              width: constraints.maxWidth,
+              controller: _unitCtrl,
+              enableFilter: true,
+              enableSearch: true,
+              requestFocusOnTap: true,
+              hintText: 'Pilih / Ketik Satuan',
+              textStyle: const TextStyle(fontSize: 14),
+              inputDecorationTheme: InputDecorationTheme(
+                hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                filled: true,
+                fillColor: AppColors.background,
+              ),
+              dropdownMenuEntries: units.map((String u) {
+                return DropdownMenuEntry<String>(value: u, label: u);
+              }).toList(),
+              onSelected: (String? selection) {
+                if (selection != null) {
+                  _unitCtrl.text = selection;
                 }
               },
             );

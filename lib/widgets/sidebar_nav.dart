@@ -26,7 +26,7 @@ class SidebarNav extends StatelessWidget {
       color: AppColors.sidebar,
       child: Column(
         children: [
-          _buildHeader(),
+          _buildHeader(provider),
           const SizedBox(height: 8),
           // Dashboard
           _buildNavItem(0, Icons.dashboard_rounded, 'Dashboard'),
@@ -54,11 +54,14 @@ class SidebarNav extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(AppProvider provider) {
+    final pendingCount = provider.pendingSyncCount;
+    final isSyncing = provider.isSyncing;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
+        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
       ),
       child: Row(
         children: [
@@ -70,7 +73,7 @@ class SidebarNav extends StatelessWidget {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.5),
+                  color: AppColors.primary.withValues(alpha: 0.5),
                   blurRadius: 14,
                   offset: const Offset(0, 4),
                 ),
@@ -84,11 +87,11 @@ class SidebarNav extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Toko Faisal',
                   style: TextStyle(
                     color: Colors.white,
@@ -97,8 +100,8 @@ class SidebarNav extends StatelessWidget {
                     letterSpacing: 0.3,
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
+                const SizedBox(height: 2),
+                const Text(
                   'Sembako & Kebutuhan Harian',
                   style: TextStyle(
                     color: Color(0xFFFFB347),
@@ -107,6 +110,36 @@ class SidebarNav extends StatelessWidget {
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: pendingCount > 0 ? AppColors.warning.withValues(alpha: 0.2) : AppColors.success.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: pendingCount > 0 ? AppColors.warning.withValues(alpha: 0.5) : AppColors.success.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSyncing ? Icons.sync_rounded : (pendingCount > 0 ? Icons.cloud_upload_rounded : Icons.cloud_done_rounded),
+                        color: pendingCount > 0 ? AppColors.warning : AppColors.success,
+                        size: 10,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isSyncing ? 'Menyinkron...' : (pendingCount > 0 ? '$pendingCount Tertunda' : 'Tersinkron'),
+                        style: TextStyle(
+                          color: pendingCount > 0 ? AppColors.warning : AppColors.success,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -124,10 +157,10 @@ class SidebarNav extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary.withOpacity(0.18) : Colors.transparent,
+          color: isActive ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: isActive
-              ? Border.all(color: AppColors.primary.withOpacity(0.5), width: 1)
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 1)
               : null,
         ),
         child: Row(
@@ -171,10 +204,10 @@ class SidebarNav extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary.withOpacity(0.18) : Colors.transparent,
+          color: isActive ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: isActive
-              ? Border.all(color: AppColors.primary.withOpacity(0.5), width: 1)
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 1)
               : null,
         ),
         child: Row(
@@ -239,7 +272,7 @@ class SidebarNav extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.sidebarActive,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
           ),
           child: Row(
             children: [
