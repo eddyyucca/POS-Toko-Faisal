@@ -219,11 +219,11 @@ class DatabaseHelper {
       )
     ''');
 
-    // Insert Default User (admin/admin)
+    // Insert Default User (admin/fathur2026)
     await db.insert('users', {
       'id': '1',
       'username': 'admin',
-      'password': 'admin',
+      'password': 'fathur2026',
       'role': 'Admin',
     });
 

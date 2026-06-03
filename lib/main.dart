@@ -132,6 +132,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildTopBar() {
+    final provider = context.watch<AppProvider>();
     final page = _pages[_selectedIndex];
     final now = DateTime.now();
     final timeStr =
@@ -165,7 +166,7 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
           const Spacer(),
-          _buildStatusBadge(Icons.wifi_rounded, 'Online', AppColors.primary),
+          _buildPingBadge(provider.pingMs),
           const SizedBox(width: 12),
           _buildStatusBadge(Icons.print_rounded, 'Printer OK', AppColors.primary),
           const SizedBox(width: 16),
@@ -204,6 +205,54 @@ class _MainShellState extends State<MainShell> {
         const SizedBox(width: 4),
         Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
       ],
+    );
+  }
+
+  Widget _buildPingBadge(int? pingMs) {
+    Color color;
+    String label;
+    IconData icon;
+
+    if (pingMs == null) {
+      color = Colors.grey;
+      label = 'Offline';
+      icon = Icons.signal_wifi_connected_no_internet_4_rounded;
+    } else if (pingMs < 200) {
+      color = AppColors.success;
+      label = '${pingMs}ms';
+      icon = Icons.wifi_rounded;
+    } else if (pingMs < 500) {
+      color = AppColors.warning;
+      label = '${pingMs}ms';
+      icon = Icons.network_check_rounded;
+    } else {
+      color = AppColors.danger;
+      label = '${pingMs}ms';
+      icon = Icons.network_cell_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

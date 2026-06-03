@@ -8,7 +8,7 @@ class ApiClient {
   final Duration _timeout;
 
   ApiClient({
-    this._baseUrl = 'https://tokofaisal.fluxatritamaindonesia.com/api',
+    this._baseUrl = 'http://127.0.0.1:8000/api',
     this._timeout = const Duration(seconds: 30),
   });
 
@@ -67,6 +67,21 @@ class ApiClient {
       return response['status'] == 'online';
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Check ping (latency) to server in milliseconds
+  Future<int?> checkPing() async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      final response = await get('/sync/status');
+      stopwatch.stop();
+      if (response['status'] == 'online') {
+        return stopwatch.elapsedMilliseconds;
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 

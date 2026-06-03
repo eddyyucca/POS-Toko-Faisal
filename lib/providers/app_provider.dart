@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -35,10 +36,21 @@ class AppProvider with ChangeNotifier {
   DateTime? get lastSyncTime => _syncService.lastSyncTime;
   String? get lastSyncError => _syncService.lastError;
 
+  int? _pingMs;
+  int? get pingMs => _pingMs;
+
+  Timer? _pingTimer;
+
+  @override
+  void dispose() {
+    _pingTimer?.cancel();
+    super.dispose();
+  }
+
   /// Initialize sync service (call after login)
   Future<void> initSync() async {
     // Load server URL from settings
-    final serverUrl = getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxatritamaindonesia.com/api');
+    final serverUrl = getSetting('sync_server_url', defaultValue: 'http://127.0.0.1:8000/api');
     _syncService.setServerUrl(serverUrl);
     await _syncService.loadLastSyncTime();
     await updatePendingCount();
@@ -54,7 +66,23 @@ class AppProvider with ChangeNotifier {
     };
 
     // Auto-sync on startup
-    performSync().catchError((_) {});
+    performSync().catchError((_) => SyncResult(success: false, message: ''));
+
+    // Start ping checker
+    _startPingCheck();
+  }
+
+  void _startPingCheck() {
+    _pingTimer?.cancel();
+    _pingTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      _pingMs = await _syncService.apiClient.checkPing();
+      notifyListeners();
+    });
+    // Initial check
+    _syncService.apiClient.checkPing().then((ms) {
+      _pingMs = ms;
+      notifyListeners();
+    });
   }
 
   /// Update the count of pending sync records
@@ -326,7 +354,7 @@ class AppProvider with ChangeNotifier {
       await updatePendingCount();
 
       // Auto-sync after checkout
-      performSync().catchError((_) {});
+      performSync().catchError((_) => SyncResult(success: false, message: ''));
     } catch (e) {
       debugPrint('Error during checkout: $e');
     }

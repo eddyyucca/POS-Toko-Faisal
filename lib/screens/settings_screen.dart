@@ -47,11 +47,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _emailCtrl.text = provider.getSetting('store_email', defaultValue: '');
     _taxPercCtrl.text = provider.getSetting('tax_percent', defaultValue: '11');
     _footerCtrl.text = provider.getSetting('receipt_footer', defaultValue: '');
-    _syncUrlCtrl.text = provider.getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxatritamaindonesia.com/api');
+    _syncUrlCtrl.text = provider.getSetting('sync_server_url', defaultValue: 'http://127.0.0.1:8000/api');
     setState(() {
       _taxEnabled = provider.getSetting('tax_enabled', defaultValue: 'true') == 'true';
       _printReceipt = provider.getSetting('print_receipt', defaultValue: 'true') == 'true';
       _soundEnabled = provider.getSetting('sound_enabled', defaultValue: 'false') == 'true';
+      _selectedPrinter = int.tryParse(provider.getSetting('selected_printer', defaultValue: '0')) ?? 0;
     });
   }
 
@@ -82,6 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'print_receipt': _printReceipt.toString(),
         'sound_enabled': _soundEnabled.toString(),
         'sync_server_url': _syncUrlCtrl.text.trim(),
+        'selected_printer': _selectedPrinter.toString(),
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -538,7 +540,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildPrinterSelector() {
-    final printers = ['Epson TM-T82', 'Star TSP100', 'Citizen CT-S310', 'Tidak Ada Printer'];
+    final printers = ['Epson TM-T82', 'Star TSP100', 'Citizen CT-S310', 'Kassen BTP 3100 USB', 'Tidak Ada Printer'];
     return Column(
       children: List.generate(printers.length, (i) {
         return GestureDetector(
@@ -557,7 +559,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Row(
               children: [
                 Icon(
-                  i < 3 ? Icons.print_rounded : Icons.print_disabled_rounded,
+                  i < 4 ? Icons.print_rounded : Icons.print_disabled_rounded,
                   size: 18,
                   color: _selectedPrinter == i ? AppColors.primary : AppColors.textSecondary,
                 ),
@@ -644,6 +646,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _taxEnabled = true;
                       _printReceipt = true;
                       _soundEnabled = false;
+                      _selectedPrinter = 0;
                     });
                   },
                 ),

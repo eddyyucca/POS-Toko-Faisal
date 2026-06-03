@@ -23,8 +23,8 @@ class ReceiptGenerator {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.roll80,
-        margin: const pw.EdgeInsets.all(12),
+        pageFormat: const PdfPageFormat(72 * PdfPageFormat.mm, double.infinity),
+        margin: const pw.EdgeInsets.all(8),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -65,7 +65,7 @@ class ReceiptGenerator {
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
-                        pw.Text('${item.quantity} x ${_formatPrice(item.product.price)}', style: pw.TextStyle(font: font, fontSize: 11)),
+                        pw.Text('${item.quantity} ${item.product.unit} x ${_formatPrice(item.product.price)}', style: pw.TextStyle(font: font, fontSize: 11)),
                         pw.Text(_formatPrice(item.product.price * item.quantity), style: pw.TextStyle(font: font, fontSize: 11)),
                       ],
                     ),
