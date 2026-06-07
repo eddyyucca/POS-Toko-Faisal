@@ -16,7 +16,10 @@ import 'screens/suppliers_screen.dart';
 import 'providers/app_provider.dart';
 import 'database/database_helper.dart';
 
+import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +41,14 @@ void main() async {
   // Make sure database is initialized on startup
   await DatabaseHelper.instance.database;
 
+  HardwareKeyboard.instance.addHandler((KeyEvent event) {
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+      navigatorKey.currentState?.maybePop();
+      return true;
+    }
+    return false;
+  });
+
   runApp(
     MultiProvider(
       providers: [
@@ -54,6 +65,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Toko Faisal POS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
@@ -187,6 +199,12 @@ class _MainShellState extends State<MainShell> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 16),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, color: AppColors.danger),
+            tooltip: 'Tutup Aplikasi',
+            onPressed: () => windowManager.close(),
           ),
         ],
       ),

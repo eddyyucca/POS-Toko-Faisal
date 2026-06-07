@@ -40,10 +40,12 @@ class AppProvider with ChangeNotifier {
   int? get pingMs => _pingMs;
 
   Timer? _pingTimer;
+  Timer? _autoSyncTimer;
 
   @override
   void dispose() {
     _pingTimer?.cancel();
+    _autoSyncTimer?.cancel();
     super.dispose();
   }
 
@@ -52,6 +54,13 @@ class AppProvider with ChangeNotifier {
     // Load server URL from settings
     final serverUrl = getSetting('sync_server_url', defaultValue: 'http://127.0.0.1:8000/api');
     _syncService.setServerUrl(serverUrl);
+
+    // Restore saved API token
+    final savedToken = getSetting('api_token');
+    if (savedToken.isNotEmpty) {
+      _syncService.apiClient.setToken(savedToken);
+    }
+
     await _syncService.loadLastSyncTime();
     await updatePendingCount();
 
@@ -70,6 +79,20 @@ class AppProvider with ChangeNotifier {
 
     // Start ping checker
     _startPingCheck();
+
+    // Auto-sync every 5 minutes jika ada pending data
+    _startAutoSync();
+  }
+
+  void _startAutoSync() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = Timer.periodic(const Duration(minutes: 5), (_) async {
+      if (_isSyncing) return;
+      final pending = await _syncService.getTotalPendingCount();
+      if (pending > 0) {
+        performSync().catchError((_) => SyncResult(success: false, message: ''));
+      }
+    });
   }
 
   void _startPingCheck() {
@@ -118,6 +141,24 @@ class AppProvider with ChangeNotifier {
   /// Check server connection
   Future<bool> checkSyncConnection() async {
     return await _syncService.checkConnection();
+  }
+
+  /// Tandai SEMUA data lokal sebagai 'pending' agar ter-upload saat sync berikutnya.
+  Future<void> forceMarkAllPending() async {
+    final db = await DatabaseHelper.instance.database;
+    final tables = [
+      'products', 'customers', 'suppliers',
+      'transactions', 'transaction_items',
+      'purchases', 'purchase_items',
+      'stock_opname', 'void_transactions',
+    ];
+    for (final table in tables) {
+      try {
+        await db.rawUpdate("UPDATE $table SET sync_status = 'pending'");
+      } catch (_) {}
+    }
+    await updatePendingCount();
+    notifyListeners();
   }
 
   /// Update sync server URL
@@ -191,7 +232,45 @@ class AppProvider with ChangeNotifier {
   }
 
   // --- Auth ---
+
+  /// Login: coba API backend dulu, fallback ke SQLite jika server offline.
   Future<bool> login(String username, String password) async {
+    await loadSettings();
+
+    final serverUrl = getSetting('sync_server_url', defaultValue: 'http://127.0.0.1:8000/api');
+    _syncService.setServerUrl(serverUrl);
+
+    // Coba login ke backend API
+    try {
+      final response = await _syncService.apiClient.postPublic(
+        '/auth/login',
+        body: {'username': username, 'password': password},
+      );
+
+      if (response['success'] == true) {
+        final token = response['token'] as String;
+        final userData = response['user'] as Map<String, dynamic>;
+
+        // Simpan token di api_client dan di settings
+        _syncService.apiClient.setToken(token);
+        await saveSetting('api_token', token);
+
+        // Buat User dari data API
+        _currentUser = User(
+          id: userData['id'].toString(),
+          username: userData['username'] as String,
+          password: '',
+          role: 'admin',
+        );
+
+        notifyListeners();
+        return true;
+      }
+    } catch (_) {
+      // Server tidak terjangkau — coba login lokal (offline mode)
+    }
+
+    // Fallback: login lokal dari SQLite
     final db = await DatabaseHelper.instance.database;
     final maps = await db.query(
       'users',
@@ -201,16 +280,28 @@ class AppProvider with ChangeNotifier {
 
     if (maps.isNotEmpty) {
       _currentUser = User.fromMap(maps.first);
-      await loadSettings();
       notifyListeners();
       return true;
     }
+
     return false;
   }
 
-  void logout() {
+  Future<void> logout() async {
+    // Coba logout dari backend (best-effort)
+    try {
+      if (_syncService.apiClient.hasToken) {
+        await _syncService.apiClient.post('/auth/logout');
+      }
+    } catch (_) {}
+
+    _syncService.apiClient.clearToken();
+    await saveSetting('api_token', '');
+
     _currentUser = null;
     _selectedCustomer = null;
+    _pingTimer?.cancel();
+    _autoSyncTimer?.cancel();
     clearCart();
     notifyListeners();
   }

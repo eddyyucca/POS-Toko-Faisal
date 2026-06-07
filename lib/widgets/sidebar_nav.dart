@@ -298,11 +298,13 @@ class SidebarNav extends StatelessWidget {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  provider.logout();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
+                onTap: () async {
+                  await provider.logout();
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  }
                 },
                 child: const Icon(Icons.logout_rounded, color: Color(0xFF8FA3B4), size: 17),
               ),

@@ -376,6 +376,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: TextStyle(fontSize: 11, color: provider.isSyncing ? AppColors.primary : AppColors.textSecondary),
           ),
         ),
+      const SizedBox(height: 12),
+      const Divider(),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange),
+          const SizedBox(width: 6),
+          const Expanded(
+            child: Text(
+              'Force Sync: tandai semua data lokal sebagai pending lalu sync ke server. Gunakan jika backend kosong.',
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: provider.isSyncing
+              ? null
+              : () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Force Sync Semua Data'),
+                      content: const Text(
+                        'Semua data lokal akan ditandai ulang sebagai pending dan dikirim ke server.\n\nLanjutkan?',
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                          child: const Text('Ya, Force Sync', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm != true || !mounted) return;
+
+                  await provider.setSyncServerUrl(_syncUrlCtrl.text.trim());
+                  await provider.forceMarkAllPending();
+                  final result = await provider.performSync();
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result.success
+                            ? 'Force sync berhasil! Semua data terkirim ke backend.'
+                            : result.message),
+                        backgroundColor: result.success ? Colors.green : AppColors.danger,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        margin: const EdgeInsets.all(16),
+                      ),
+                    );
+                  }
+                },
+          icon: const Icon(Icons.upload_rounded, size: 16, color: Colors.orange),
+          label: const Text('Force Sync Semua Data', style: TextStyle(color: Colors.orange)),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.orange),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+      ),
     ]);
   }
 

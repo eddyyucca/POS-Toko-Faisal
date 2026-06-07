@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/product.dart';
@@ -19,6 +20,41 @@ class _PosScreenState extends State<PosScreen> {
   String _searchQuery = '';
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
+
+  String _barcodeBuffer = '';
+  DateTime? _lastKeystrokeTime;
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKeyMessage);
+  }
+
+  bool _handleKeyMessage(KeyEvent event) {
+    if (_searchFocus.hasFocus) return false;
+
+    if (event is KeyDownEvent) {
+      final now = DateTime.now();
+      if (_lastKeystrokeTime != null && now.difference(_lastKeystrokeTime!) > const Duration(milliseconds: 100)) {
+        _barcodeBuffer = '';
+      }
+      _lastKeystrokeTime = now;
+
+      if (event.logicalKey == LogicalKeyboardKey.enter) {
+        if (_barcodeBuffer.isNotEmpty) {
+          _handleBarcodeScan(_barcodeBuffer);
+          _barcodeBuffer = '';
+          return true;
+        }
+      } else {
+        final char = event.character;
+        if (char != null) {
+          _barcodeBuffer += char;
+        }
+      }
+    }
+    return false;
+  }
 
   List<String> _getCategories(List<Product> products) {
     final cats = products.map((p) => p.category).toSet().toList();
@@ -95,6 +131,7 @@ class _PosScreenState extends State<PosScreen> {
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyMessage);
     _searchController.dispose();
     _searchFocus.dispose();
     super.dispose();
