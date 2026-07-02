@@ -31,9 +31,25 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 9,
+        version: 10,
         onCreate: _createDB,
         onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 10 && AppConfig.isProd) {
+            // Force reset all database tables to clear old dummy records for production
+            await db.execute('DROP TABLE IF EXISTS users');
+            await db.execute('DROP TABLE IF EXISTS products');
+            await db.execute('DROP TABLE IF EXISTS transactions');
+            await db.execute('DROP TABLE IF EXISTS transaction_items');
+            await db.execute('DROP TABLE IF EXISTS stock_opname');
+            await db.execute('DROP TABLE IF EXISTS suppliers');
+            await db.execute('DROP TABLE IF EXISTS purchases');
+            await db.execute('DROP TABLE IF EXISTS purchase_items');
+            await db.execute('DROP TABLE IF EXISTS settings');
+            await db.execute('DROP TABLE IF EXISTS customers');
+            await db.execute('DROP TABLE IF EXISTS void_transactions');
+            await _createDB(db, newVersion);
+            return;
+          }
           if (oldVersion < 5) {
             // Full reset for versions before 5
             await db.execute('DROP TABLE IF EXISTS users');
