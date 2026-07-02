@@ -47,7 +47,35 @@ class AppProvider with ChangeNotifier {
   Timer? _autoSyncTimer;
 
   AppProvider() {
-    // Mulai ping sejak awal — tidak perlu tunggu login
+    // Mulai inisialisasi pengaturan sejak awal boot
+    _initStartupSettings();
+  }
+
+  Future<void> _initStartupSettings() async {
+    try {
+      await loadSettings();
+      
+      // Self-healing check: Jika build adalah PROD tetapi URL yang tersimpan masih localhost,
+      // paksa ubah kembali ke URL produksi resmi.
+      var serverUrl = getSetting(
+        'sync_server_url',
+        defaultValue: AppConfig.apiBaseUrl,
+      );
+      if (AppConfig.isProd && serverUrl.contains('localhost')) {
+        serverUrl = AppConfig.apiBaseUrl;
+        await saveSetting('sync_server_url', serverUrl);
+      }
+      
+      _syncService.setServerUrl(serverUrl);
+      
+      // Restore saved API token
+      final savedToken = getSetting('api_token');
+      if (savedToken.isNotEmpty) {
+        _syncService.apiClient.setToken(savedToken);
+      }
+    } catch (_) {}
+    
+    // Mulai ping setelah inisialisasi selesai
     _startPingCheck();
   }
 
