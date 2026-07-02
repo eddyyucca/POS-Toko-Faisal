@@ -341,12 +341,15 @@ class AppProvider with ChangeNotifier {
         _syncService.apiClient.setToken(token);
         await saveSetting('api_token', token);
 
+        final usernameFromApi = userData['username'] as String;
+        final resolvedRole = usernameFromApi.toLowerCase() == 'admin' ? 'Admin' : 'Kasir';
+        
         // Buat User dari data API
         _currentUser = User(
           id: userData['id'].toString(),
-          username: userData['username'] as String,
+          username: usernameFromApi,
           password: '',
-          role: 'admin',
+          role: resolvedRole,
         );
 
         notifyListeners();
