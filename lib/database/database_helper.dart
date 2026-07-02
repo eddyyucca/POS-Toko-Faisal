@@ -31,10 +31,10 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 10,
+        version: 11,
         onCreate: _createDB,
         onUpgrade: (db, oldVersion, newVersion) async {
-          if (oldVersion < 10 && AppConfig.isProd) {
+          if (oldVersion < 11 && AppConfig.isProd) {
             // Force reset all database tables to clear old dummy records for production
             await db.execute('DROP TABLE IF EXISTS users');
             await db.execute('DROP TABLE IF EXISTS products');
@@ -280,6 +280,14 @@ class DatabaseHelper {
       'username': 'admin',
       'password': 'fathur2026',
       'role': 'Admin',
+    });
+
+    // Insert Default Cashier (kasir/fathur2026)
+    await db.insert('users', {
+      'id': '2',
+      'username': 'kasir',
+      'password': 'fathur2026',
+      'role': 'Kasir',
     });
 
     // Insert Default Settings
