@@ -9,6 +9,7 @@ import '../models/purchase.dart';
 import '../models/customer.dart';
 import '../database/database_helper.dart';
 import '../services/sync_service.dart';
+import '../config/app_config.dart';
 
 class AppProvider with ChangeNotifier {
   User? _currentUser;
@@ -23,6 +24,9 @@ class AppProvider with ChangeNotifier {
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
+
+  /// True jika sedang ada request HTTP aktif (GET/POST)
+  bool get isRequesting => _syncService.apiClient.isRequesting;
 
   String _syncStatus = '';
   String get syncStatus => _syncStatus;
@@ -42,6 +46,11 @@ class AppProvider with ChangeNotifier {
   Timer? _pingTimer;
   Timer? _autoSyncTimer;
 
+  AppProvider() {
+    // Mulai ping sejak awal — tidak perlu tunggu login
+    _startPingCheck();
+  }
+
   @override
   void dispose() {
     _pingTimer?.cancel();
@@ -51,8 +60,11 @@ class AppProvider with ChangeNotifier {
 
   /// Initialize sync service (call after login)
   Future<void> initSync() async {
-    // Load server URL from settings
-    final serverUrl = getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxa.co.id/api');
+    // Gunakan URL dari settings jika ada, fallback ke AppConfig
+    final serverUrl = getSetting(
+      'sync_server_url',
+      defaultValue: AppConfig.apiBaseUrl,
+    );
     _syncService.setServerUrl(serverUrl);
 
     // Restore saved API token
@@ -60,6 +72,11 @@ class AppProvider with ChangeNotifier {
     if (savedToken.isNotEmpty) {
       _syncService.apiClient.setToken(savedToken);
     }
+
+    // Wire up callback: setiap kali request aktif berubah, rebuild UI
+    _syncService.apiClient.onActiveRequestsChanged = (_) {
+      notifyListeners();
+    };
 
     await _syncService.loadLastSyncTime();
     await updatePendingCount();
@@ -77,10 +94,10 @@ class AppProvider with ChangeNotifier {
     // Auto-sync on startup
     performSync().catchError((_) => SyncResult(success: false, message: ''));
 
-    // Start ping checker
+    // Ping sudah berjalan sejak konstruktor, restart agar pakai URL terbaru
     _startPingCheck();
 
-    // Auto-sync every 5 minutes jika ada pending data
+    // Auto-sync every 1 minute
     _startAutoSync();
   }
 
@@ -96,8 +113,16 @@ class AppProvider with ChangeNotifier {
   void _startPingCheck() {
     _pingTimer?.cancel();
     _pingTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      final oldPing = _pingMs;
       _pingMs = await _syncService.apiClient.checkPing();
       notifyListeners();
+
+      // AUTO-SYNC ON RECONNECT
+      if (oldPing == null && _pingMs != null) {
+        if (!_isSyncing) {
+          performSync().catchError((_) => SyncResult(success: false, message: ''));
+        }
+      }
     });
     // Initial check
     _syncService.apiClient.checkPing().then((ms) {
@@ -235,7 +260,10 @@ class AppProvider with ChangeNotifier {
   Future<bool> login(String username, String password) async {
     await loadSettings();
 
-    final serverUrl = getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxa.co.id/api');
+    final serverUrl = getSetting(
+      'sync_server_url',
+      defaultValue: AppConfig.apiBaseUrl,
+    );
     _syncService.setServerUrl(serverUrl);
 
     // Coba login ke backend API

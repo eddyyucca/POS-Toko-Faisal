@@ -286,7 +286,10 @@ class _CartItemTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 4,
+                  runSpacing: 2,
                   children: [
                     Text(
                       _formatPrice(item.subtotal),
@@ -296,7 +299,6 @@ class _CartItemTile extends StatelessWidget {
                         color: AppColors.primary,
                       ),
                     ),
-                    const SizedBox(width: 4),
                     if (item.product.hasUnit2)
                       _buildUnitSelector()
                     else

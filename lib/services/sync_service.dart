@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 import '../database/database_helper.dart';
 import 'api_client.dart';
@@ -247,78 +248,124 @@ class SyncService {
 
     // Update products from server
     if (data['products'] != null) {
-      for (final product in List<Map<String, dynamic>>.from(data['products'])) {
-        // Remove server-specific fields
-        product.remove('deleted_at');
-        product.remove('created_at');
-        product.remove('updated_at');
-        product['sync_status'] = 'synced';
-        
-        await db.insert('products', product, conflictAlgorithm: ConflictAlgorithm.replace);
-        count++;
+      for (final raw in List<Map<String, dynamic>>.from(data['products'])) {
+        try {
+          final product = _filterFields(raw, {
+            'id', 'name', 'category', 'price', 'costPrice',
+            'stockGudang', 'stockDisplay', 'minStock', 'maxStock',
+            'emoji', 'discountPercent', 'sku', 'unit',
+            'unit2', 'unit2Conversion', 'unit2Price', 'sync_status',
+          });
+          // Pastikan field wajib tidak null/kosong
+          if (product['id'] == null || product['name'] == null) continue;
+          product['sync_status'] = 'synced';
+          // Default value untuk field NOT NULL
+          product['category']       ??= '';
+          product['price']          ??= 0.0;
+          product['costPrice']      ??= 0.0;
+          product['stockGudang']    ??= 0;
+          product['stockDisplay']   ??= 0;
+          product['minStock']       ??= 0;
+          product['maxStock']       ??= 0;
+          product['emoji']          ??= '📦';
+          product['discountPercent'] ??= 0.0;
+          product['unit']           ??= 'Pcs';
+          await db.insert('products', product,
+              conflictAlgorithm: ConflictAlgorithm.replace);
+          count++;
+        } catch (e) {
+          debugPrint('[Sync] Error insert product: $e | data: $raw');
+        }
       }
     }
 
     // Update customers from server
     if (data['customers'] != null) {
-      for (final customer in List<Map<String, dynamic>>.from(data['customers'])) {
-        customer.remove('created_at');
-        customer.remove('updated_at');
-        customer['sync_status'] = 'synced';
-        
-        await db.insert('customers', customer, conflictAlgorithm: ConflictAlgorithm.replace);
-        count++;
+      for (final raw in List<Map<String, dynamic>>.from(data['customers'])) {
+        try {
+          final customer = _filterFields(raw, {
+            'id', 'name', 'phone', 'email', 'points', 'totalSpend',
+            'createdAt', 'sync_status',
+          });
+          if (customer['id'] == null) continue;
+          customer['sync_status'] = 'synced';
+          customer['name']       ??= '';
+          customer['phone']      ??= '';
+          customer['createdAt']  ??= DateTime.now().toIso8601String();
+          await db.insert('customers', customer,
+              conflictAlgorithm: ConflictAlgorithm.replace);
+          count++;
+        } catch (e) {
+          debugPrint('[Sync] Error insert customer: $e');
+        }
       }
     }
 
     // Update suppliers from server
     if (data['suppliers'] != null) {
-      for (final supplier in List<Map<String, dynamic>>.from(data['suppliers'])) {
-        supplier.remove('created_at');
-        supplier.remove('updated_at');
-        supplier['sync_status'] = 'synced';
-
-        await db.insert('suppliers', supplier, conflictAlgorithm: ConflictAlgorithm.replace);
-        count++;
+      for (final raw in List<Map<String, dynamic>>.from(data['suppliers'])) {
+        try {
+          final supplier = _filterFields(raw, {
+            'id', 'name', 'phone', 'address', 'sync_status',
+          });
+          if (supplier['id'] == null) continue;
+          supplier['sync_status'] = 'synced';
+          supplier['name']    ??= '';
+          supplier['phone']   ??= '';
+          supplier['address'] ??= '';
+          await db.insert('suppliers', supplier,
+              conflictAlgorithm: ConflictAlgorithm.replace);
+          count++;
+        } catch (e) {
+          debugPrint('[Sync] Error insert supplier: $e');
+        }
       }
     }
 
-    // Simpan transaksi dari backend (untuk multi-kasir: lihat transaksi kasir lain)
-    // IGNORE: jangan timpa transaksi lokal yang masih pending
+    // Simpan transaksi dari backend (multi-kasir)
+    // ConflictAlgorithm.ignore — jangan timpa transaksi lokal yg masih pending
     if (data['transactions'] != null) {
-      // Field yang dikenal oleh SQLite transactions table
-      const txnFields = {
-        'id', 'date', 'total', 'discount', 'amountPaid',
-        'userId', 'paymentMethod', 'customerId', 'sync_status',
-      };
-      const itemFields = {
-        'id', 'transactionId', 'productId', 'qty', 'price', 'discount', 'sync_status',
-        'unit', 'conversionQty',
-      };
-
       for (final raw in List<Map<String, dynamic>>.from(data['transactions'])) {
-        final txn = Map<String, dynamic>.from(raw);
-        final items = (txn.remove('items') as List<dynamic>? ?? [])
-            .cast<Map<String, dynamic>>();
+        try {
+          final txn   = Map<String, dynamic>.from(raw);
+          final items = (txn.remove('items') as List<dynamic>? ?? [])
+              .cast<Map<String, dynamic>>();
 
-        // Hanya masukkan field yang ada di SQLite schema
-        final txnRow = {
-          for (final k in txnFields)
-            if (txn.containsKey(k)) k: txn[k],
-          'sync_status': 'synced',
-        };
+          final txnRow = _filterFields(txn, {
+            'id', 'date', 'total', 'discount', 'amountPaid',
+            'userId', 'paymentMethod', 'customerId', 'sync_status',
+          });
+          if (txnRow['id'] == null) continue;
+          txnRow['sync_status'] = 'synced';
+          txnRow['date']        ??= DateTime.now().toIso8601String();
+          txnRow['total']       ??= 0.0;
+          txnRow['discount']    ??= 0.0;
+          txnRow['userId']      ??= '1';
 
-        await db.insert('transactions', txnRow, conflictAlgorithm: ConflictAlgorithm.ignore);
+          await db.insert('transactions', txnRow,
+              conflictAlgorithm: ConflictAlgorithm.ignore);
 
-        for (final item in items) {
-          final itemRow = {
-            for (final k in itemFields)
-              if (item.containsKey(k)) k: item[k],
-            'sync_status': 'synced',
-          };
-          await db.insert('transaction_items', itemRow, conflictAlgorithm: ConflictAlgorithm.ignore);
+          for (final item in items) {
+            try {
+              final itemRow = _filterFields(item, {
+                'id', 'transactionId', 'productId', 'qty', 'price',
+                'discount', 'unit', 'conversionQty', 'sync_status',
+              });
+              if (itemRow['id'] == null) continue;
+              itemRow['sync_status'] = 'synced';
+              itemRow['qty']         ??= 0;
+              itemRow['price']       ??= 0.0;
+              itemRow['discount']    ??= 0.0;
+              await db.insert('transaction_items', itemRow,
+                  conflictAlgorithm: ConflictAlgorithm.ignore);
+            } catch (e) {
+              debugPrint('[Sync] Error insert transaction_item: $e');
+            }
+          }
+          count++;
+        } catch (e) {
+          debugPrint('[Sync] Error insert transaction: $e');
         }
-        count++;
       }
     }
 
@@ -337,6 +384,15 @@ class SyncService {
         _lastSyncTime = DateTime.tryParse(result.first['value'] as String? ?? '');
       }
     } catch (_) {}
+  }
+
+  /// Filter map: hanya kembalikan key yang ada dalam [allowedKeys]
+  Map<String, dynamic> _filterFields(
+      Map<String, dynamic> raw, Set<String> allowedKeys) {
+    return {
+      for (final k in allowedKeys)
+        if (raw.containsKey(k)) k: raw[k],
+    };
   }
 }
 

@@ -21,50 +21,127 @@ class SidebarNav extends StatelessWidget {
     final isAdmin = role == 'Admin';
     final lowStockCount = provider.lowStockCount;
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCollapse = screenWidth < 950;
+
     return Container(
-      width: 230,
+      width: isCollapse ? 72 : 220,
       color: AppColors.sidebar,
       child: Column(
         children: [
-          _buildHeader(provider),
+          _buildHeader(provider, isCollapse),
           const SizedBox(height: 8),
           // Dashboard
-          _buildNavItem(0, Icons.dashboard_rounded, 'Dashboard'),
+          _buildNavItem(0, Icons.dashboard_rounded, 'Dashboard', isCollapse),
           // Kasir
-          _buildNavItem(1, Icons.point_of_sale_rounded, 'Kasir'),
+          _buildNavItem(1, Icons.point_of_sale_rounded, 'Kasir', isCollapse),
           // Produk dengan badge stok menipis
-          _buildNavItemWithBadge(2, Icons.inventory_2_rounded, 'Produk', lowStockCount),
+          _buildNavItemWithBadge(2, Icons.inventory_2_rounded, 'Produk', lowStockCount, isCollapse),
 
           // Opname
-          _buildNavItem(3, Icons.checklist_rounded, 'Opname'),
+          _buildNavItem(3, Icons.checklist_rounded, 'Opname', isCollapse),
           // Laporan (admin only)
-          if (isAdmin) _buildNavItem(4, Icons.bar_chart_rounded, 'Laporan'),
+          if (isAdmin) _buildNavItem(4, Icons.bar_chart_rounded, 'Laporan', isCollapse),
           // Riwayat
-          _buildNavItem(5, Icons.receipt_long_rounded, 'Riwayat'),
+          _buildNavItem(5, Icons.receipt_long_rounded, 'Riwayat', isCollapse),
           // Supplier (admin only)
-          if (isAdmin) _buildNavItem(8, Icons.local_shipping_rounded, 'Supplier'),
+          if (isAdmin) _buildNavItem(8, Icons.local_shipping_rounded, 'Supplier', isCollapse),
           const Spacer(),
           // Pengguna (admin only)
-          if (isAdmin) _buildNavItem(7, Icons.manage_accounts_rounded, 'Pengguna'),
+          if (isAdmin) _buildNavItem(7, Icons.manage_accounts_rounded, 'Pengguna', isCollapse),
           // Pengaturan (admin only)
-          if (isAdmin) _buildNavItem(6, Icons.settings_rounded, 'Pengaturan'),
-          _buildUserFooter(context),
+          if (isAdmin) _buildNavItem(6, Icons.settings_rounded, 'Pengaturan', isCollapse),
+          _buildUserFooter(context, isCollapse),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(AppProvider provider) {
+  Widget _buildHeader(AppProvider provider, bool isCollapse) {
     final pendingCount = provider.pendingSyncCount;
-    final isSyncing = provider.isSyncing;
+    final isSyncing    = provider.isSyncing;
+
+    // Status: Menyinkron → Tertunda → Tersinkron
+    final Color    badgeColor;
+    final Color    badgeBorder;
+    final IconData badgeIcon;
+    final String   badgeLabel;
+    final Color    badgeTextColor;
+
+    if (isSyncing) {
+      badgeColor     = AppColors.primary.withValues(alpha: 0.2);
+      badgeBorder    = AppColors.primary.withValues(alpha: 0.5);
+      badgeIcon      = Icons.sync_rounded;
+      badgeLabel     = 'Menyinkron...';
+      badgeTextColor = AppColors.primary;
+    } else if (pendingCount > 0) {
+      badgeColor     = AppColors.warning.withValues(alpha: 0.2);
+      badgeBorder    = AppColors.warning.withValues(alpha: 0.5);
+      badgeIcon      = Icons.cloud_upload_rounded;
+      badgeLabel     = '$pendingCount Tertunda';
+      badgeTextColor = AppColors.warning;
+    } else {
+      badgeColor     = AppColors.success.withValues(alpha: 0.2);
+      badgeBorder    = AppColors.success.withValues(alpha: 0.5);
+      badgeIcon      = Icons.cloud_done_rounded;
+      badgeLabel     = 'Tersinkron';
+      badgeTextColor = AppColors.success;
+    }
+
+    if (isCollapse) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/logo_circle.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: badgeTextColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.sidebar, width: 1.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
       ),
       child: Row(
         children: [
+          // Logo
           Container(
             width: 64,
             height: 64,
@@ -112,28 +189,23 @@ class SidebarNav extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
+                // Badge sync
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: pendingCount > 0 ? AppColors.warning.withValues(alpha: 0.2) : AppColors.success.withValues(alpha: 0.2),
+                    color: badgeColor,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: pendingCount > 0 ? AppColors.warning.withValues(alpha: 0.5) : AppColors.success.withValues(alpha: 0.5),
-                    ),
+                    border: Border.all(color: badgeBorder),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        isSyncing ? Icons.sync_rounded : (pendingCount > 0 ? Icons.cloud_upload_rounded : Icons.cloud_done_rounded),
-                        color: pendingCount > 0 ? AppColors.warning : AppColors.success,
-                        size: 10,
-                      ),
+                      Icon(badgeIcon, color: badgeTextColor, size: 10),
                       const SizedBox(width: 4),
                       Text(
-                        isSyncing ? 'Menyinkron...' : (pendingCount > 0 ? '$pendingCount Tertunda' : 'Tersinkron'),
+                        badgeLabel,
                         style: TextStyle(
-                          color: pendingCount > 0 ? AppColors.warning : AppColors.success,
+                          color: badgeTextColor,
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
                         ),
@@ -149,8 +221,34 @@ class SidebarNav extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
+  Widget _buildNavItem(int index, IconData icon, String label, bool isCollapse) {
     final bool isActive = selectedIndex == index;
+
+    if (isCollapse) {
+      return GestureDetector(
+        onTap: () => onItemSelected(index),
+        child: Container(
+          width: 44,
+          height: 44,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: isActive
+                ? Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 1)
+                : null,
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              color: isActive ? AppColors.primaryLight : AppColors.sidebarInactive,
+              size: 20,
+            ),
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: () => onItemSelected(index),
       child: Container(
@@ -196,8 +294,40 @@ class SidebarNav extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItemWithBadge(int index, IconData icon, String label, int badgeCount) {
+  Widget _buildNavItemWithBadge(int index, IconData icon, String label, int badgeCount, bool isCollapse) {
     final bool isActive = selectedIndex == index;
+
+    if (isCollapse) {
+      return GestureDetector(
+        onTap: () => onItemSelected(index),
+        child: Container(
+          width: 44,
+          height: 44,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: isActive
+                ? Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 1)
+                : null,
+          ),
+          child: Center(
+            child: Badge(
+              label: Text('$badgeCount'),
+              isLabelVisible: badgeCount > 0,
+              backgroundColor: AppColors.danger,
+              textColor: Colors.white,
+              child: Icon(
+                icon,
+                color: isActive ? AppColors.primaryLight : AppColors.sidebarInactive,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: () => onItemSelected(index),
       child: Container(
@@ -259,12 +389,69 @@ class SidebarNav extends StatelessWidget {
     );
   }
 
-  Widget _buildUserFooter(BuildContext context) {
+  Widget _buildUserFooter(BuildContext context, bool isCollapse) {
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         final username = provider.currentUser?.username ?? 'Admin';
         final role = provider.currentUser?.role ?? 'Kasir';
         final initial = username.isNotEmpty ? username[0].toUpperCase() : 'A';
+
+        if (isCollapse) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: GestureDetector(
+              onTap: () async {
+                final bool? logout = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Keluar Aplikasi'),
+                    content: const Text('Apakah Anda yakin ingin logout?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Batal'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Keluar', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+                if (logout == true) {
+                  await provider.logout();
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  }
+                }
+              },
+              child: Tooltip(
+                message: 'Keluar ($username)',
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.sidebarActive,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initial,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
 
         return Container(
           margin: const EdgeInsets.all(12),

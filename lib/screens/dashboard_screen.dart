@@ -140,6 +140,44 @@ class _DashboardScreenState extends State<DashboardScreen>
     final List<Product> lowStock =
         List<Product>.from(stats['lowStockProducts'] ?? []);
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isStacked = screenWidth < 1000;
+
+    final chartWidget = _buildWeeklyChart(weeklyData);
+    final sidebarWidget = Column(
+      children: [
+        _buildTopProducts(topProducts),
+        if (lowStock.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          _buildLowStockAlert(lowStock),
+        ],
+      ],
+    );
+
+    final bottomLayout = isStacked
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              chartWidget,
+              const SizedBox(height: 24),
+              sidebarWidget,
+            ],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 6,
+                child: chartWidget,
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 4,
+                child: sidebarWidget,
+              ),
+            ],
+          );
+
     return Column(
       children: [
         _buildHeader(username, greeting),
@@ -150,30 +188,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 20),
-                _buildStatCards(todayRevenue, todayCount, todayAvg, lowStock.length),
+                _buildStatCards(context, todayRevenue, todayCount, todayAvg, lowStock.length),
                 const SizedBox(height: 24),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: _buildWeeklyChart(weeklyData),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        children: [
-                          _buildTopProducts(topProducts),
-                          if (lowStock.isNotEmpty) ...[
-                            const SizedBox(height: 20),
-                            _buildLowStockAlert(lowStock),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                bottomLayout,
               ],
             ),
           ),
@@ -185,6 +202,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget _buildHeader(String username, String greeting) {
     final now = DateTime.now();
     final dateStr = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(now);
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isNarrow = screenWidth < 700;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
@@ -219,59 +239,68 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ),
           const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$greeting, $username! 👋',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$greeting, $username! 👋',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                dateStr,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
+                const SizedBox(height: 2),
+                Text(
+                  dateStr,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const Spacer(),
-          _buildRefreshButton(),
+          const SizedBox(width: 12),
+          _buildRefreshButton(isNarrow),
         ],
       ),
     );
   }
 
-  Widget _buildRefreshButton() {
+  Widget _buildRefreshButton(bool isNarrow) {
     return Tooltip(
       message: 'Refresh Data',
       child: InkWell(
         onTap: _loadStats,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 14, vertical: 9),
           decoration: BoxDecoration(
             color: AppColors.primaryLightBg,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.refresh_rounded, size: 16, color: AppColors.primary),
-              const SizedBox(width: 6),
-              Text(
-                'Refresh',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+              if (!isNarrow) ...[
+                const SizedBox(width: 6),
+                Text(
+                  'Refresh',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -280,59 +309,94 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildStatCards(
-      double revenue, int count, double avg, int lowStockCount) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            icon: Icons.payments_rounded,
-            label: 'Pendapatan Hari Ini',
-            value: _formatCompact(revenue),
-            subValue: _formatCurrency(revenue),
-            color: AppColors.primary,
-            bgColor: AppColors.primaryLightBg,
-            trend: '+hari ini',
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _StatCard(
-            icon: Icons.inventory_2_rounded,
-            label: 'Transaksi Hari Ini',
-            value: '$count',
-            subValue: count == 1 ? '1 transaksi' : '$count transaksi',
-            color: AppColors.primary,
-            bgColor: const Color(0xFFEDF7EC),
-            trend: 'total',
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _StatCard(
-            icon: Icons.analytics_rounded,
-            label: 'Rata-rata Transaksi',
-            value: _formatCompact(avg),
-            subValue: _formatCurrency(avg),
-            color: AppColors.warning,
-            bgColor: const Color(0xFFFFF8E1),
-            trend: 'per transaksi',
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _StatCard(
-            icon: Icons.warning_rounded,
-            label: 'Stok Menipis',
-            value: '$lowStockCount',
-            subValue:
-                lowStockCount == 0 ? 'Semua aman' : '$lowStockCount produk',
-            color: AppColors.danger,
-            bgColor: const Color(0xFFFFEBEE),
-            trend: lowStockCount == 0 ? '✓ normal' : 'perlu restok',
-          ),
-        ),
-      ],
+      BuildContext context, double revenue, int count, double avg, int lowStockCount) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    final card1 = _StatCard(
+      icon: Icons.payments_rounded,
+      label: 'Pendapatan Hari Ini',
+      value: _formatCompact(revenue),
+      subValue: _formatCurrency(revenue),
+      color: AppColors.primary,
+      bgColor: AppColors.primaryLightBg,
+      trend: '+hari ini',
     );
+    final card2 = _StatCard(
+      icon: Icons.inventory_2_rounded,
+      label: 'Transaksi Hari Ini',
+      value: '$count',
+      subValue: count == 1 ? '1 transaksi' : '$count transaksi',
+      color: AppColors.primary,
+      bgColor: const Color(0xFFEDF7EC),
+      trend: 'total',
+    );
+    final card3 = _StatCard(
+      icon: Icons.analytics_rounded,
+      label: 'Rata-rata Transaksi',
+      value: _formatCompact(avg),
+      subValue: _formatCurrency(avg),
+      color: AppColors.warning,
+      bgColor: const Color(0xFFFFF8E1),
+      trend: 'per transaksi',
+    );
+    final card4 = _StatCard(
+      icon: Icons.warning_rounded,
+      label: 'Stok Menipis',
+      value: '$lowStockCount',
+      subValue: lowStockCount == 0 ? 'Semua aman' : '$lowStockCount produk',
+      color: AppColors.danger,
+      bgColor: const Color(0xFFFFEBEE),
+      trend: lowStockCount == 0 ? '✓ normal' : 'perlu restok',
+    );
+
+    if (screenWidth < 750) {
+      // 1 kolom vertikal
+      return Column(
+        children: [
+          card1,
+          const SizedBox(height: 12),
+          card2,
+          const SizedBox(height: 12),
+          card3,
+          const SizedBox(height: 12),
+          card4,
+        ],
+      );
+    } else if (screenWidth < 1200) {
+      // Grid 2x2
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: card1),
+              const SizedBox(width: 16),
+              Expanded(child: card2),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: card3),
+              const SizedBox(width: 16),
+              Expanded(child: card4),
+            ],
+          ),
+        ],
+      );
+    } else {
+      // Row horizontal 4 kolom
+      return Row(
+        children: [
+          Expanded(child: card1),
+          const SizedBox(width: 16),
+          Expanded(child: card2),
+          const SizedBox(width: 16),
+          Expanded(child: card3),
+          const SizedBox(width: 16),
+          Expanded(child: card4),
+        ],
+      );
+    }
   }
 
   Widget _buildWeeklyChart(List<Map<String, dynamic>> weeklyData) {
