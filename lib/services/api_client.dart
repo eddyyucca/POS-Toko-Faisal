@@ -9,7 +9,7 @@ class ApiClient {
   String? _token;
 
   ApiClient({
-    this._baseUrl = 'http://127.0.0.1:8000/api',
+    this._baseUrl = 'https://tokofaisal.fluxa.co.id/api',
     this._timeout = const Duration(seconds: 30),
   });
 

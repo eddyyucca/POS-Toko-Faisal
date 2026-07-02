@@ -30,7 +30,7 @@ class DatabaseHelper {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 7,
+        version: 9,
         onCreate: _createDB,
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 5) {
@@ -72,6 +72,38 @@ class DatabaseHelper {
               );
             } catch (_) {}
           }
+          if (oldVersion < 8) {
+            try {
+              await db.execute(
+                "ALTER TABLE transactions ADD COLUMN amountPaid REAL DEFAULT 0"
+              );
+            } catch (_) {}
+          }
+          if (oldVersion < 9) {
+            try {
+              await db.execute("ALTER TABLE products ADD COLUMN unit2 TEXT");
+            } catch (_) {}
+            try {
+              await db.execute(
+                "ALTER TABLE products ADD COLUMN unit2Conversion INTEGER DEFAULT 0"
+              );
+            } catch (_) {}
+            try {
+              await db.execute(
+                "ALTER TABLE products ADD COLUMN unit2Price REAL DEFAULT 0"
+              );
+            } catch (_) {}
+            try {
+              await db.execute(
+                "ALTER TABLE transaction_items ADD COLUMN unit TEXT DEFAULT 'Pcs'"
+              );
+            } catch (_) {}
+            try {
+              await db.execute(
+                "ALTER TABLE transaction_items ADD COLUMN conversionQty INTEGER DEFAULT 1"
+              );
+            } catch (_) {}
+          }
         },
 
       ),
@@ -109,6 +141,9 @@ class DatabaseHelper {
         discountPercent $realType,
         sku TEXT DEFAULT "",
         unit TEXT DEFAULT 'Pcs',
+        unit2 TEXT,
+        unit2Conversion INTEGER DEFAULT 0,
+        unit2Price REAL DEFAULT 0,
         sync_status TEXT DEFAULT 'synced'
       )
     ''');
@@ -119,6 +154,7 @@ class DatabaseHelper {
         date $textType,
         total $realType,
         discount $realType,
+        amountPaid REAL DEFAULT 0,
         userId $textType,
         paymentMethod TEXT DEFAULT "Tunai",
         customerId TEXT,
@@ -134,6 +170,8 @@ class DatabaseHelper {
         qty $integerType,
         price $realType,
         discount $realType,
+        unit TEXT DEFAULT 'Pcs',
+        conversionQty INTEGER DEFAULT 1,
         sync_status TEXT DEFAULT 'synced'
       )
     ''');

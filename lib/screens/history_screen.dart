@@ -14,17 +14,30 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
+  int _todayTotalTrx = 0;
+  double _todayTotalIncome = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AppProvider>(context, listen: false).loadTransactionHistory();
+      _refresh();
     });
     _searchCtrl.addListener(() {
       setState(() {
         _searchQuery = _searchCtrl.text.toLowerCase();
       });
+    });
+  }
+
+  Future<void> _refresh() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    await provider.loadTransactionHistory();
+    final summary = await provider.getTodaySummary();
+    if (!mounted) return;
+    setState(() {
+      _todayTotalTrx = summary['totalTrx'] as int;
+      _todayTotalIncome = summary['totalIncome'] as double;
     });
   }
 
@@ -49,22 +62,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 return id.contains(_searchQuery) || cashier.contains(_searchQuery);
               }).toList();
 
-        // Calculate totals for today
-        final today = DateTime.now();
-        int totalTrx = 0;
-        double totalIncome = 0;
-
-        for (var tx in allTransactions) {
-          DateTime dt = tx['dateObj'];
-          if (dt.year == today.year && dt.month == today.month && dt.day == today.day) {
-            totalTrx++;
-            totalIncome += tx['amount'];
-          }
-        }
-
         return Column(
           children: [
-            _buildHeader(context, provider, totalTrx, totalIncome),
+            _buildHeader(context, provider, _todayTotalTrx, _todayTotalIncome),
             Expanded(child: _buildList(context, provider, transactions)),
           ],
         );
@@ -117,7 +117,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               const SizedBox(width: 16),
               OutlinedButton.icon(
-                onPressed: () => provider.loadTransactionHistory(),
+                onPressed: _refresh,
                 icon: const Icon(Icons.refresh_rounded, size: 16),
                 label: const Text('Refresh'),
                 style: OutlinedButton.styleFrom(
@@ -195,23 +195,60 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(24),
-      itemCount: transactions.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final tx = transactions[i];
-        return _TransactionCard(
-          tx: tx,
-          onTap: () async {
-            await showDialog(
-              context: context,
-              builder: (_) => TransactionDetailDialog(tx: tx),
-            );
-            provider.loadTransactionHistory();
-          },
-        );
-      },
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(24),
+            itemCount: transactions.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final tx = transactions[i];
+              return _TransactionCard(
+                tx: tx,
+                onTap: () async {
+                  await showDialog(
+                    context: context,
+                    builder: (_) => TransactionDetailDialog(tx: tx),
+                  );
+                  _refresh();
+                },
+              );
+            },
+          ),
+        ),
+        if (_searchQuery.isEmpty) _buildLoadMore(provider),
+      ],
+    );
+  }
+
+  Widget _buildLoadMore(AppProvider provider) {
+    if (!provider.hasMoreHistory) {
+      return const SizedBox(height: 8);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Center(
+        child: OutlinedButton.icon(
+          onPressed: provider.isLoadingMoreHistory
+              ? null
+              : () => provider.loadMoreTransactionHistory(),
+          icon: provider.isLoadingMoreHistory
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.expand_more_rounded, size: 16),
+          label: Text(provider.isLoadingMoreHistory ? 'Memuat...' : 'Muat Lebih Banyak'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textPrimary,
+            side: const BorderSide(color: AppColors.border),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      ),
     );
   }
 
@@ -268,10 +305,10 @@ class _TransactionCard extends StatelessWidget {
   };
 
   static const Map<String, Color> _methodColors = {
-    'Tunai': AppColors.primary,
-    'QRIS': Color(0xFF6366F1),
-    'Kartu Debit': AppColors.primary,
-    'Transfer': AppColors.warning,
+    'Tunai': AppColors.paymentTunai,
+    'QRIS': AppColors.paymentQris,
+    'Kartu Debit': AppColors.paymentDebit,
+    'Transfer': AppColors.paymentTransfer,
   };
 
   @override

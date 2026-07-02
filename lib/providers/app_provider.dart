@@ -52,7 +52,7 @@ class AppProvider with ChangeNotifier {
   /// Initialize sync service (call after login)
   Future<void> initSync() async {
     // Load server URL from settings
-    final serverUrl = getSetting('sync_server_url', defaultValue: 'http://127.0.0.1:8000/api');
+    final serverUrl = getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxa.co.id/api');
     _syncService.setServerUrl(serverUrl);
 
     // Restore saved API token
@@ -86,12 +86,10 @@ class AppProvider with ChangeNotifier {
 
   void _startAutoSync() {
     _autoSyncTimer?.cancel();
-    _autoSyncTimer = Timer.periodic(const Duration(minutes: 5), (_) async {
+    // Selalu sync setiap 5 menit: upload pending + download dari backend (multi-kasir)
+    _autoSyncTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
       if (_isSyncing) return;
-      final pending = await _syncService.getTotalPendingCount();
-      if (pending > 0) {
-        performSync().catchError((_) => SyncResult(success: false, message: ''));
-      }
+      performSync().catchError((_) => SyncResult(success: false, message: ''));
     });
   }
 
@@ -237,7 +235,7 @@ class AppProvider with ChangeNotifier {
   Future<bool> login(String username, String password) async {
     await loadSettings();
 
-    final serverUrl = getSetting('sync_server_url', defaultValue: 'http://127.0.0.1:8000/api');
+    final serverUrl = getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxa.co.id/api');
     _syncService.setServerUrl(serverUrl);
 
     // Coba login ke backend API
@@ -308,34 +306,62 @@ class AppProvider with ChangeNotifier {
 
   // --- Cart Methods ---
 
-  void addToCart(Product product) {
+  void addToCart(Product product, {String? unit}) {
     if (product.stockDisplay <= 0) return;
 
-    int index = _cartItems.indexWhere((item) => item.product.id == product.id);
+    final selectedUnit = unit ?? product.unit;
+    final conversionQty = selectedUnit == product.unit2 ? product.unit2Conversion : 1;
+
+    int index = _cartItems.indexWhere(
+      (item) => item.product.id == product.id && item.selectedUnit == selectedUnit,
+    );
     if (index >= 0) {
-      if (_cartItems[index].quantity < product.stockDisplay) {
+      if ((_cartItems[index].quantity + 1) * conversionQty <= product.stockDisplay) {
         _cartItems[index].quantity++;
       }
-    } else {
-      _cartItems.add(CartItem(product: product));
+    } else if (conversionQty <= product.stockDisplay) {
+      _cartItems.add(CartItem(
+        product: product,
+        selectedUnit: selectedUnit,
+        conversionQty: conversionQty,
+      ));
     }
     notifyListeners();
   }
 
-  void updateCartItemQuantity(Product product, int quantity) {
-    int index = _cartItems.indexWhere((item) => item.product.id == product.id);
+  void updateCartItemQuantity(Product product, int quantity, {String? unit}) {
+    int index = _cartItems.indexWhere(
+      (item) => item.product.id == product.id && (unit == null || item.selectedUnit == unit),
+    );
     if (index >= 0) {
       if (quantity <= 0) {
         _cartItems.removeAt(index);
-      } else if (quantity <= product.stockDisplay) {
+      } else if (quantity * _cartItems[index].conversionQty <= product.stockDisplay) {
         _cartItems[index].quantity = quantity;
       }
       notifyListeners();
     }
   }
 
-  void removeCartItem(Product product) {
-    _cartItems.removeWhere((item) => item.product.id == product.id);
+  /// Ubah satuan jual item keranjang (mis. Satuan -> Dus) saat checkout.
+  /// Mengembalikan false jika stok tidak cukup untuk satuan baru.
+  bool changeCartItemUnit(CartItem item, String newUnit) {
+    if (newUnit == item.selectedUnit) return true;
+    final product = item.product;
+    final conversionQty = newUnit == product.unit2 ? product.unit2Conversion : 1;
+    if (item.quantity * conversionQty > product.stockDisplay) {
+      return false;
+    }
+    item.selectedUnit = newUnit;
+    item.conversionQty = conversionQty;
+    notifyListeners();
+    return true;
+  }
+
+  void removeCartItem(Product product, {String? unit}) {
+    _cartItems.removeWhere(
+      (item) => item.product.id == product.id && (unit == null || item.selectedUnit == unit),
+    );
     notifyListeners();
   }
 
@@ -409,13 +435,15 @@ class AppProvider with ChangeNotifier {
             'transactionId': transactionId,
             'productId': item.product.id,
             'qty': item.quantity,
-            'price': item.product.price,
-            'discount': item.product.price - item.unitPriceAfterDiscount,
+            'price': item.baseUnitPrice,
+            'discount': item.baseUnitPrice - item.unitPriceAfterDiscount,
+            'unit': item.selectedUnit,
+            'conversionQty': item.conversionQty,
             'sync_status': 'pending',
           });
 
-          // Kurangi stok display
-          int newStockDisplay = item.product.stockDisplay - item.quantity;
+          // Kurangi stok display (dikonversi ke satuan terkecil/pcs)
+          int newStockDisplay = item.product.stockDisplay - (item.quantity * item.conversionQty);
           await txn.update(
             'products',
             {'stockDisplay': newStockDisplay},
@@ -636,10 +664,54 @@ class AppProvider with ChangeNotifier {
   }
 
   // --- Transaction History ---
+  static const int historyPageSize = 100;
   List<Map<String, dynamic>> _transactionHistory = [];
   List<Map<String, dynamic>> get transactionHistory => _transactionHistory;
+  bool _hasMoreHistory = true;
+  bool get hasMoreHistory => _hasMoreHistory;
+  bool _isLoadingMoreHistory = false;
+  bool get isLoadingMoreHistory => _isLoadingMoreHistory;
 
+  /// Ringkasan transaksi hari ini, dihitung langsung lewat SQL agar tetap akurat
+  /// walau daftar riwayat di memori sudah dipaginasi (tidak memuat semua data).
+  Future<Map<String, dynamic>> getTodaySummary() async {
+    final db = await DatabaseHelper.instance.database;
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final result = await db.rawQuery('''
+      SELECT COUNT(*) as totalTrx, COALESCE(SUM(total), 0) as totalIncome
+      FROM transactions
+      WHERE date LIKE ?
+    ''', ['$todayStr%']);
+    return {
+      'totalTrx': (result.first['totalTrx'] as int?) ?? 0,
+      'totalIncome': (result.first['totalIncome'] as num?)?.toDouble() ?? 0.0,
+    };
+  }
+
+  /// Muat riwayat transaksi terbaru (halaman pertama). Tidak memuat SEMUA data
+  /// sekaligus - hanya [historyPageSize] transaksi paling baru, sisanya lewat loadMoreTransactionHistory().
   Future<void> loadTransactionHistory() async {
+    _hasMoreHistory = true;
+    final history = await _fetchHistoryPage(offset: 0, limit: historyPageSize);
+    _transactionHistory = history;
+    _hasMoreHistory = history.length == historyPageSize;
+    notifyListeners();
+  }
+
+  /// Muat halaman berikutnya (riwayat yang lebih lama) dan tambahkan ke list yang sudah ada.
+  Future<void> loadMoreTransactionHistory() async {
+    if (_isLoadingMoreHistory || !_hasMoreHistory) return;
+    _isLoadingMoreHistory = true;
+    notifyListeners();
+
+    final nextPage = await _fetchHistoryPage(offset: _transactionHistory.length, limit: historyPageSize);
+    _transactionHistory = [..._transactionHistory, ...nextPage];
+    _hasMoreHistory = nextPage.length == historyPageSize;
+    _isLoadingMoreHistory = false;
+    notifyListeners();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchHistoryPage({required int offset, required int limit}) async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> txns = await db.rawQuery('''
       SELECT t.id, t.date, t.total, t.discount, t.paymentMethod, t.customerId,
@@ -648,28 +720,42 @@ class AppProvider with ChangeNotifier {
       LEFT JOIN users u ON t.userId = u.id
       LEFT JOIN customers c ON t.customerId = c.id
       ORDER BY t.date DESC
-    ''');
+      LIMIT ? OFFSET ?
+    ''', [limit, offset]);
+
+    if (txns.isEmpty) return [];
+
+    // Ambil semua item untuk batch transaksi ini dalam SATU query (hindari N+1).
+    final txIds = txns.map((t) => t['id']).toList();
+    final placeholders = txIds.map((_) => '?').join(',');
+    final itemsQuery = await db.rawQuery('''
+      SELECT ti.transactionId, ti.qty, ti.price, ti.discount, ti.unit, p.name, p.emoji
+      FROM transaction_items ti
+      LEFT JOIN products p ON ti.productId = p.id
+      WHERE ti.transactionId IN ($placeholders)
+    ''', txIds);
+
+    final Map<String, List<Map<String, dynamic>>> itemsByTx = {};
+    for (var item in itemsQuery) {
+      itemsByTx.putIfAbsent(item['transactionId'] as String, () => []).add(item);
+    }
 
     List<Map<String, dynamic>> history = [];
-
     for (var tx in txns) {
-      final itemsQuery = await db.rawQuery('''
-        SELECT ti.qty, ti.price, ti.discount, p.name, p.emoji
-        FROM transaction_items ti
-        LEFT JOIN products p ON ti.productId = p.id
-        WHERE ti.transactionId = ?
-      ''', [tx['id']]);
+      final txItems = itemsByTx[tx['id']] ?? [];
 
       List<String> itemsList = [];
       List<Map<String, dynamic>> itemDetails = [];
-      for (var item in itemsQuery) {
-        itemsList.add('${item['emoji'] ?? ''} ${item['name'] ?? 'Unknown'} x${item['qty']}');
+      for (var item in txItems) {
+        final unit = (item['unit'] as String?) ?? 'Pcs';
+        itemsList.add('${item['emoji'] ?? ''} ${item['name'] ?? 'Unknown'} x${item['qty']} $unit');
         itemDetails.add({
           'name': item['name'] ?? 'Unknown',
           'emoji': item['emoji'] ?? '📦',
           'qty': item['qty'],
           'price': (item['price'] as num).toDouble(),
           'discount': (item['discount'] as num).toDouble(),
+          'unit': unit,
         });
       }
 
@@ -691,8 +777,7 @@ class AppProvider with ChangeNotifier {
       });
     }
 
-    _transactionHistory = history;
-    notifyListeners();
+    return history;
   }
 
   // --- Void Transaction ---

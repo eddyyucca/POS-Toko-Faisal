@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/user.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_button.dart';
+import '../widgets/empty_state.dart';
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -90,13 +92,12 @@ class _UsersScreenState extends State<UsersScreen> {
         content: Text('Anda yakin ingin menghapus "${user.username}"?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+          DangerButton(
+            label: 'Hapus',
             onPressed: () {
               Provider.of<AppProvider>(context, listen: false).deleteUser(user.id);
               Navigator.pop(ctx);
             },
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -124,16 +125,10 @@ class _UsersScreenState extends State<UsersScreen> {
                       Text('Kelola akses kasir dan admin', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     ],
                   ),
-                  ElevatedButton.icon(
+                  PrimaryButton(
+                    label: 'Tambah Pengguna',
+                    icon: Icons.person_add_rounded,
                     onPressed: () => _showUserForm(),
-                    icon: const Icon(Icons.person_add_rounded, size: 18),
-                    label: const Text('Tambah Pengguna'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
                   ),
                 ],
               ),
@@ -145,7 +140,12 @@ class _UsersScreenState extends State<UsersScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: ListView.separated(
+                  child: users.isEmpty
+                      ? const EmptyState(
+                          icon: Icons.people_outline,
+                          message: 'Belum ada pengguna.',
+                        )
+                      : ListView.separated(
                     itemCount: users.length,
                     separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.border),
                     itemBuilder: (context, index) {

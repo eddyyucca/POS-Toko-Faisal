@@ -4,6 +4,7 @@ import '../providers/app_provider.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_form_dialog.dart';
+import '../widgets/app_button.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -61,14 +62,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Batal'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+          DangerButton(
+            label: 'Hapus',
             onPressed: () {
               Provider.of<AppProvider>(context, listen: false)
                   .deleteProduct(product.id);
               Navigator.pop(ctx);
             },
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -269,19 +269,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          ElevatedButton.icon(
+          PrimaryButton(
+            label: 'Tambah Produk',
+            icon: Icons.add_rounded,
             onPressed: () => _showProductForm(context),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Tambah Produk'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
-            ),
           ),
         ],
       ),

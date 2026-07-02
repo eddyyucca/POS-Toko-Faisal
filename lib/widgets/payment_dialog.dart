@@ -21,10 +21,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
   bool _paymentDone = false;
 
   final List<Map<String, dynamic>> _methods = [
-    {'label': 'Tunai', 'icon': Icons.payments_rounded, 'color': const Color(0xFF10B981)},
-    {'label': 'QRIS', 'icon': Icons.qr_code_rounded, 'color': const Color(0xFF6366F1)},
-    {'label': 'Kartu Debit', 'icon': Icons.credit_card_rounded, 'color': const Color(0xFF2563EB)},
-    {'label': 'Transfer', 'icon': Icons.account_balance_rounded, 'color': const Color(0xFFF59E0B)},
+    {'label': 'Tunai', 'icon': Icons.payments_rounded, 'color': AppColors.paymentTunai},
+    {'label': 'QRIS', 'icon': Icons.qr_code_rounded, 'color': AppColors.paymentQris},
+    {'label': 'Kartu Debit', 'icon': Icons.credit_card_rounded, 'color': AppColors.paymentDebit},
+    {'label': 'Transfer', 'icon': Icons.account_balance_rounded, 'color': AppColors.paymentTransfer},
   ];
 
   double get cashAmount => double.tryParse(_cashController.text.replaceAll('.', '')) ?? 0;
@@ -53,7 +53,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.all(40),
       child: SizedBox(
         width: 480,

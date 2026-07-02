@@ -47,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _emailCtrl.text = provider.getSetting('store_email', defaultValue: '');
     _taxPercCtrl.text = provider.getSetting('tax_percent', defaultValue: '11');
     _footerCtrl.text = provider.getSetting('receipt_footer', defaultValue: '');
-    _syncUrlCtrl.text = provider.getSetting('sync_server_url', defaultValue: 'http://127.0.0.1:8000/api');
+    _syncUrlCtrl.text = provider.getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxa.co.id/api');
     setState(() {
       _taxEnabled = provider.getSetting('tax_enabled', defaultValue: 'true') == 'true';
       _printReceipt = provider.getSetting('print_receipt', defaultValue: 'true') == 'true';
@@ -315,7 +315,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSyncSection(AppProvider provider) {
     return _buildSection('Sinkronisasi Data', [
-      _buildTextField('URL Server API', 'cth. https://tokofaisal.fluxatritamaindonesia.com/api', Icons.cloud_sync_rounded, _syncUrlCtrl),
+      _buildTextField('URL Server API', 'cth. https://tokofaisal.fluxa.co.id/api', Icons.cloud_sync_rounded, _syncUrlCtrl),
       const SizedBox(height: 12),
       Row(
         children: [

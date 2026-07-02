@@ -71,10 +71,10 @@ class _PosScreenState extends State<PosScreen> {
     }).toList();
   }
 
-  void _handleBarcodeScan(String query) {
+  void _handleBarcodeScan(String query) async {
     if (query.trim().isEmpty) return;
     final provider = Provider.of<AppProvider>(context, listen: false);
-    
+
     // Cari exact match untuk SKU atau Nama
     Product? match;
     try {
@@ -90,27 +90,38 @@ class _PosScreenState extends State<PosScreen> {
     }
 
     if (match != null) {
-      if (match.stockDisplay > 0) {
-        provider.addToCart(match);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('🛒 Ditambahkan: ${match.name}', style: const TextStyle(color: Colors.white)),
-            backgroundColor: AppColors.primary,
-            duration: const Duration(seconds: 1),
-          )
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Stok display habis! Lakukan mutasi dari gudang.', style: TextStyle(color: Colors.white)), 
-            backgroundColor: AppColors.danger
-          ),
-        );
-      }
+      await _addProductToCart(match, showSnackbar: true);
       // Reset search field
       _searchController.clear();
       setState(() => _searchQuery = '');
       _searchFocus.requestFocus();
+    }
+  }
+
+  /// Tambah produk ke keranjang. Selalu masuk sebagai satuan dasar (Pcs/dll) -
+  /// kalau barang punya satuan besar (Dus/Pack), kasir mengubahnya nanti
+  /// langsung di panel keranjang sebelum bayar.
+  Future<void> _addProductToCart(Product product, {bool showSnackbar = false}) async {
+    if (product.stockDisplay <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Stok display habis! Lakukan mutasi dari gudang.', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
+    Provider.of<AppProvider>(context, listen: false).addToCart(product);
+
+    if (showSnackbar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🛒 Ditambahkan: ${product.name}', style: const TextStyle(color: Colors.white)),
+          backgroundColor: AppColors.primary,
+          duration: const Duration(seconds: 1),
+        ),
+      );
     }
   }
 
@@ -147,9 +158,20 @@ class _PosScreenState extends State<PosScreen> {
             CartPanel(
               cartItems: provider.cartItems,
               onClearCart: provider.clearCart,
-              onIncrement: (item) => provider.updateCartItemQuantity(item.product, item.quantity + 1),
-              onDecrement: (item) => provider.updateCartItemQuantity(item.product, item.quantity - 1),
-              onRemove: (item) => provider.removeCartItem(item.product),
+              onIncrement: (item) => provider.updateCartItemQuantity(item.product, item.quantity + 1, unit: item.selectedUnit),
+              onDecrement: (item) => provider.updateCartItemQuantity(item.product, item.quantity - 1, unit: item.selectedUnit),
+              onRemove: (item) => provider.removeCartItem(item.product, unit: item.selectedUnit),
+              onChangeUnit: (item, unit) {
+                final ok = provider.changeCartItemUnit(item, unit);
+                if (!ok) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Stok tidak cukup untuk satuan ini.', style: TextStyle(color: Colors.white)),
+                      backgroundColor: AppColors.danger,
+                    ),
+                  );
+                }
+              },
               onCheckout: () => _openPayment(context),
             ),
           ],
@@ -327,15 +349,7 @@ class _PosScreenState extends State<PosScreen> {
           itemCount: products.length,
           itemBuilder: (_, i) => ProductListTile(
             product: products[i],
-            onTap: () {
-              if (products[i].stockDisplay > 0) {
-                Provider.of<AppProvider>(context, listen: false).addToCart(products[i]);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Stok display habis! Lakukan mutasi dari gudang.', style: TextStyle(color: Colors.white)), backgroundColor: AppColors.danger),
-                );
-              }
-            },
+            onTap: () => _addProductToCart(products[i]),
           ),
         ),
       ),

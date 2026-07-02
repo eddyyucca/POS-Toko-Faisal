@@ -39,14 +39,14 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
   Color _methodColor(String method) {
     switch (method) {
       case 'QRIS':
-        return const Color(0xFF6366F1);
+        return AppColors.paymentQris;
       case 'Kartu Debit':
-        return const Color(0xFF2563EB);
+        return AppColors.paymentDebit;
       case 'Transfer':
-        return const Color(0xFFF59E0B);
+        return AppColors.paymentTransfer;
       case 'Tunai':
       default:
-        return const Color(0xFF10B981);
+        return AppColors.paymentTunai;
     }
   }
 
@@ -311,7 +311,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
         constraints: const BoxConstraints(maxHeight: 700),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: AppColors.cardShadow,
@@ -637,7 +637,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                         flex: 4,
                         child: Text('PRODUK', style: headerStyle)),
                     SizedBox(
-                        width: 40,
+                        width: 56,
                         child: Text('QTY',
                             style: headerStyle,
                             textAlign: TextAlign.center)),
@@ -672,6 +672,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                 final discountTotal = qty * itemDiscount;
                 final emoji = item['emoji'] as String;
                 final name = item['name'] as String;
+                final unit = (item['unit'] as String?) ?? 'Pcs';
                 final isLast = idx == itemDetails.length - 1;
 
                 return Container(
@@ -709,13 +710,13 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                         ),
                       ),
                       SizedBox(
-                        width: 40,
+                        width: 56,
                         child: Text(
-                          qty.toInt().toString(),
+                          '${qty.toInt()} $unit',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: AppColors.textPrimary,
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

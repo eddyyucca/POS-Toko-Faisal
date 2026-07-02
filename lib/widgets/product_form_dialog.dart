@@ -30,6 +30,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   late TextEditingController _skuCtrl;
   late TextEditingController _costPriceCtrl;
   late TextEditingController _unitCtrl;
+  late TextEditingController _unit2Ctrl;
+  late TextEditingController _unit2ConversionCtrl;
+  late TextEditingController _unit2PriceCtrl;
 
   @override
   void initState() {
@@ -47,6 +50,11 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _skuCtrl = TextEditingController(text: p?.sku ?? '');
     _costPriceCtrl = TextEditingController(text: p != null ? p.costPrice.toInt().toString() : '0');
     _unitCtrl = TextEditingController(text: p?.unit ?? 'Pcs');
+    _unit2Ctrl = TextEditingController(text: p?.unit2 ?? '');
+    _unit2ConversionCtrl = TextEditingController(
+        text: p != null && p.unit2Conversion > 0 ? p.unit2Conversion.toString() : '');
+    _unit2PriceCtrl = TextEditingController(
+        text: p != null && p.unit2Price > 0 ? p.unit2Price.toInt().toString() : '');
 
     // Listen for price/costPrice changes to rebuild margin indicator
     _priceCtrl.addListener(_onPriceChanged);
@@ -71,10 +79,36 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     _skuCtrl.dispose();
     _costPriceCtrl.dispose();
     _unitCtrl.dispose();
+    _unit2Ctrl.dispose();
+    _unit2ConversionCtrl.dispose();
+    _unit2PriceCtrl.dispose();
     super.dispose();
   }
 
+  String? _unit2Error() {
+    final hasName = _unit2Ctrl.text.trim().isNotEmpty;
+    final hasConversion = _unit2ConversionCtrl.text.trim().isNotEmpty;
+    final hasPrice = _unit2PriceCtrl.text.trim().isNotEmpty;
+    if (!hasName && !hasConversion && !hasPrice) return null; // satuan besar tidak dipakai
+
+    if (!hasName || !hasConversion || !hasPrice) {
+      return 'Nama satuan, isi per satuan, dan harga jual harus diisi semua.';
+    }
+    final conversion = int.tryParse(_unit2ConversionCtrl.text) ?? 0;
+    if (conversion < 1) {
+      return 'Isi per satuan minimal 1.';
+    }
+    return null;
+  }
+
   void _save() {
+    final unit2Error = _unit2Error();
+    if (unit2Error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(unit2Error), backgroundColor: AppColors.danger),
+      );
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       final newProduct = Product(
         id: widget.product?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -90,6 +124,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
         sku: _skuCtrl.text,
         unit: _unitCtrl.text.isEmpty ? 'Pcs' : _unitCtrl.text,
         costPrice: double.tryParse(_costPriceCtrl.text) ?? 0.0,
+        unit2: _unit2Ctrl.text.trim(),
+        unit2Conversion: int.tryParse(_unit2ConversionCtrl.text) ?? 0,
+        unit2Price: double.tryParse(_unit2PriceCtrl.text) ?? 0.0,
       );
       widget.onSave(newProduct);
       Navigator.pop(context);
@@ -179,6 +216,26 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 ),
                 const SizedBox(height: 16),
                 _buildTextField('Diskon Default (%)', _discountCtrl, isNumber: true),
+                const SizedBox(height: 20),
+                const Text(
+                  'Satuan Besar (Dus/Renteng) - Opsional',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Isi jika barang ini juga dijual per dus/renteng dengan harga berbeda.',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _buildUnit2Field(context)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildTextField('Isi per Satuan (Pcs)', _unit2ConversionCtrl, isNumber: true)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildTextField('Harga Jual per Satuan Besar (Rp)', _unit2PriceCtrl, isNumber: true),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -412,6 +469,63 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               onSelected: (String? selection) {
                 if (selection != null) {
                   _unitCtrl.text = selection;
+                }
+              },
+            );
+          }
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUnit2Field(BuildContext context) {
+    final units = ['Dus', 'Renteng', 'Box', 'Karton', 'Lusin', 'Pack'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Nama Satuan Besar',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return DropdownMenu<String>(
+              width: constraints.maxWidth,
+              controller: _unit2Ctrl,
+              enableFilter: true,
+              enableSearch: true,
+              requestFocusOnTap: true,
+              hintText: 'Mis. Dus / Renteng',
+              textStyle: const TextStyle(fontSize: 14),
+              inputDecorationTheme: InputDecorationTheme(
+                hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                filled: true,
+                fillColor: AppColors.background,
+              ),
+              dropdownMenuEntries: units.map((String u) {
+                return DropdownMenuEntry<String>(value: u, label: u);
+              }).toList(),
+              onSelected: (String? selection) {
+                if (selection != null) {
+                  _unit2Ctrl.text = selection;
                 }
               },
             );

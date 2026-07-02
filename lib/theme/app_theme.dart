@@ -18,6 +18,19 @@ class AppColors {
   static const Color border = Color(0xFFE1EAE1);
   static const Color cardShadow = Color(0x144A8540);    // shadow hijau tipis
   static const Color primaryLightBg = Color(0xFFE8F5E9);   // latar hijau sangat terang
+
+  // Warna metode pembayaran (dipakai di payment_dialog, transaction_detail_dialog, history_screen)
+  static const Color paymentTunai = Color(0xFF10B981);
+  static const Color paymentQris = Color(0xFF6366F1);
+  static const Color paymentDebit = Color(0xFF2563EB);
+  static const Color paymentTransfer = Color(0xFFF59E0B);
+
+  // Warna sidebar non-aktif & badge
+  static const Color sidebarInactive = Color(0xFF8FA3B4);
+  static const Color sidebarBadge = Color(0xFFFFB347);
+
+  // Latar produk out-of-stock
+  static const Color outOfStockBg = Color(0xFFF8FAFC);
 }
 
 class AppTheme {

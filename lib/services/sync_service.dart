@@ -215,32 +215,18 @@ class SyncService {
     return data;
   }
 
-  /// Delete transactional data that was successfully synced
+  /// Mark synced data as 'synced' (keep locally for history, don't delete)
   Future<void> _clearSyncedData(Map<String, dynamic> syncedIds) async {
     final db = await _db.database;
 
-    // Transactional tables: DELETE synced records
-    final transactionalTables = [
+    // Semua tabel: tandai 'synced', JANGAN dihapus agar history tetap bisa dilihat di app
+    final allTables = [
       'transactions', 'transaction_items', 'stock_opname',
       'purchases', 'purchase_items', 'void_transactions',
+      'products', 'customers', 'suppliers',
     ];
 
-    for (final table in transactionalTables) {
-      if (syncedIds.containsKey(table)) {
-        final ids = List<String>.from(syncedIds[table]);
-        if (ids.isNotEmpty) {
-          final placeholders = ids.map((_) => '?').join(',');
-          await db.rawDelete(
-            'DELETE FROM $table WHERE id IN ($placeholders)',
-            ids,
-          );
-        }
-      }
-    }
-
-    // Master tables: Mark as synced (don't delete)
-    final masterTables = ['products', 'customers', 'suppliers'];
-    for (final table in masterTables) {
+    for (final table in allTables) {
       if (syncedIds.containsKey(table)) {
         final ids = List<String>.from(syncedIds[table]);
         if (ids.isNotEmpty) {
@@ -291,8 +277,47 @@ class SyncService {
         supplier.remove('created_at');
         supplier.remove('updated_at');
         supplier['sync_status'] = 'synced';
-        
+
         await db.insert('suppliers', supplier, conflictAlgorithm: ConflictAlgorithm.replace);
+        count++;
+      }
+    }
+
+    // Simpan transaksi dari backend (untuk multi-kasir: lihat transaksi kasir lain)
+    // IGNORE: jangan timpa transaksi lokal yang masih pending
+    if (data['transactions'] != null) {
+      // Field yang dikenal oleh SQLite transactions table
+      const txnFields = {
+        'id', 'date', 'total', 'discount', 'amountPaid',
+        'userId', 'paymentMethod', 'customerId', 'sync_status',
+      };
+      const itemFields = {
+        'id', 'transactionId', 'productId', 'qty', 'price', 'discount', 'sync_status',
+        'unit', 'conversionQty',
+      };
+
+      for (final raw in List<Map<String, dynamic>>.from(data['transactions'])) {
+        final txn = Map<String, dynamic>.from(raw);
+        final items = (txn.remove('items') as List<dynamic>? ?? [])
+            .cast<Map<String, dynamic>>();
+
+        // Hanya masukkan field yang ada di SQLite schema
+        final txnRow = {
+          for (final k in txnFields)
+            if (txn.containsKey(k)) k: txn[k],
+          'sync_status': 'synced',
+        };
+
+        await db.insert('transactions', txnRow, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+        for (final item in items) {
+          final itemRow = {
+            for (final k in itemFields)
+              if (item.containsKey(k)) k: item[k],
+            'sync_status': 'synced',
+          };
+          await db.insert('transaction_items', itemRow, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
         count++;
       }
     }

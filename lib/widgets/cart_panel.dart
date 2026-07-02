@@ -10,6 +10,7 @@ class CartPanel extends StatelessWidget {
   final ValueChanged<CartItem> onIncrement;
   final ValueChanged<CartItem> onDecrement;
   final ValueChanged<CartItem> onRemove;
+  final void Function(CartItem item, String unit) onChangeUnit;
   final VoidCallback onCheckout;
 
   const CartPanel({
@@ -19,6 +20,7 @@ class CartPanel extends StatelessWidget {
     required this.onIncrement,
     required this.onDecrement,
     required this.onRemove,
+    required this.onChangeUnit,
     required this.onCheckout,
   });
 
@@ -145,6 +147,7 @@ class CartPanel extends StatelessWidget {
           onIncrement: () => onIncrement(item),
           onDecrement: () => onDecrement(item),
           onRemove: () => onRemove(item),
+          onChangeUnit: (unit) => onChangeUnit(item, unit),
         );
       },
     );
@@ -237,12 +240,14 @@ class _CartItemTile extends StatelessWidget {
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
   final VoidCallback onRemove;
+  final ValueChanged<String> onChangeUnit;
 
   const _CartItemTile({
     required this.item,
     required this.onIncrement,
     required this.onDecrement,
     required this.onRemove,
+    required this.onChangeUnit,
   });
 
   @override
@@ -292,13 +297,16 @@ class _CartItemTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      '(${item.quantity} ${item.product.unit})',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
+                    if (item.product.hasUnit2)
+                      _buildUnitSelector()
+                    else
+                      Text(
+                        '(${item.quantity} ${item.selectedUnit})',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -331,6 +339,45 @@ class _CartItemTile extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUnitSelector() {
+    final product = item.product;
+    return PopupMenuButton<String>(
+      tooltip: 'Ubah satuan',
+      onSelected: onChangeUnit,
+      itemBuilder: (ctx) => [
+        PopupMenuItem(
+          value: product.unit,
+          child: Text('${product.unit} (${_formatPrice(product.price)})'),
+        ),
+        PopupMenuItem(
+          value: product.unit2,
+          child: Text('${product.unit2} (${_formatPrice(product.unit2Price)})'),
+        ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${item.quantity} ${item.selectedUnit}',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 14, color: AppColors.primary),
+          ],
+        ),
       ),
     );
   }

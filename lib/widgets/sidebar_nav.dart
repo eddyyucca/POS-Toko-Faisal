@@ -104,7 +104,7 @@ class SidebarNav extends StatelessWidget {
                 const Text(
                   'Sembako & Kebutuhan Harian',
                   style: TextStyle(
-                    color: Color(0xFFFFB347),
+                    color: AppColors.sidebarBadge,
                     fontSize: 9.5,
                     fontWeight: FontWeight.w500,
                   ),
@@ -167,14 +167,14 @@ class SidebarNav extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isActive ? AppColors.primaryLight : const Color(0xFF8FA3B4),
+              color: isActive ? AppColors.primaryLight : AppColors.sidebarInactive,
               size: 20,
             ),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
-                color: isActive ? Colors.white : const Color(0xFF8FA3B4),
+                color: isActive ? Colors.white : AppColors.sidebarInactive,
                 fontSize: 14,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
               ),
@@ -214,7 +214,7 @@ class SidebarNav extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isActive ? AppColors.primaryLight : const Color(0xFF8FA3B4),
+              color: isActive ? AppColors.primaryLight : AppColors.sidebarInactive,
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -222,7 +222,7 @@ class SidebarNav extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: isActive ? Colors.white : const Color(0xFF8FA3B4),
+                  color: isActive ? Colors.white : AppColors.sidebarInactive,
                   fontSize: 14,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
                 ),
@@ -293,7 +293,7 @@ class SidebarNav extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(username, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                    Text(role, style: const TextStyle(color: Color(0xFF8FA3B4), fontSize: 11)),
+                    Text(role, style: const TextStyle(color: AppColors.sidebarInactive, fontSize: 11)),
                   ],
                 ),
               ),
@@ -306,7 +306,7 @@ class SidebarNav extends StatelessWidget {
                     );
                   }
                 },
-                child: const Icon(Icons.logout_rounded, color: Color(0xFF8FA3B4), size: 17),
+                child: const Icon(Icons.logout_rounded, color: AppColors.sidebarInactive, size: 17),
               ),
             ],
           ),

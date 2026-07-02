@@ -16,7 +16,7 @@ class ProductListTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: outOfStock ? const Color(0xFFF8FAFC) : AppColors.surface,
+          color: outOfStock ? AppColors.outOfStockBg : AppColors.surface,
           border: const Border(bottom: BorderSide(color: AppColors.border, width: 1)),
         ),
         child: Row(

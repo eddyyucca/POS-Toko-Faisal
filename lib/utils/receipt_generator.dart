@@ -65,16 +65,16 @@ class ReceiptGenerator {
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
-                        pw.Text('${item.quantity} ${item.product.unit} x ${_formatPrice(item.product.price)}', style: pw.TextStyle(font: font, fontSize: 11)),
-                        pw.Text(_formatPrice(item.product.price * item.quantity), style: pw.TextStyle(font: font, fontSize: 11)),
+                        pw.Text('${item.quantity} ${item.selectedUnit} x ${_formatPrice(item.baseUnitPrice)}', style: pw.TextStyle(font: font, fontSize: 11)),
+                        pw.Text(_formatPrice(item.baseUnitPrice * item.quantity), style: pw.TextStyle(font: font, fontSize: 11)),
                       ],
                     ),
-                    if (item.unitPriceAfterDiscount < item.product.price)
+                    if (item.unitPriceAfterDiscount < item.baseUnitPrice)
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
                           pw.Text('  Diskon', style: pw.TextStyle(font: font, fontSize: 10)),
-                          pw.Text('-${_formatPrice((item.product.price - item.unitPriceAfterDiscount) * item.quantity)}', style: pw.TextStyle(font: font, fontSize: 10)),
+                          pw.Text('-${_formatPrice((item.baseUnitPrice - item.unitPriceAfterDiscount) * item.quantity)}', style: pw.TextStyle(font: font, fontSize: 10)),
                         ],
                       ),
                     pw.SizedBox(height: 4),
