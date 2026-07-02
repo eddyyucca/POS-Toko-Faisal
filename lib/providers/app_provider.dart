@@ -61,10 +61,18 @@ class AppProvider with ChangeNotifier {
   /// Initialize sync service (call after login)
   Future<void> initSync() async {
     // Gunakan URL dari settings jika ada, fallback ke AppConfig
-    final serverUrl = getSetting(
+    var serverUrl = getSetting(
       'sync_server_url',
       defaultValue: AppConfig.apiBaseUrl,
     );
+
+    // Self-healing check: Jika build adalah PROD tetapi URL yang tersimpan masih localhost,
+    // paksa ubah kembali ke URL produksi resmi.
+    if (AppConfig.isProd && serverUrl.contains('localhost')) {
+      serverUrl = AppConfig.apiBaseUrl;
+      await saveSetting('sync_server_url', serverUrl);
+    }
+
     _syncService.setServerUrl(serverUrl);
 
     // Restore saved API token
@@ -180,6 +188,30 @@ class AppProvider with ChangeNotifier {
         await db.rawUpdate("UPDATE $table SET sync_status = 'pending'");
       } catch (_) {}
     }
+    await updatePendingCount();
+    notifyListeners();
+  }
+
+  /// Hapus semua data transaksi, produk, dll dari database lokal (kecuali data login users & settings)
+  Future<void> clearAllLocalData() async {
+    final db = await DatabaseHelper.instance.database;
+    await db.transaction((txn) async {
+      await txn.delete('transaction_items');
+      await txn.delete('transactions');
+      await txn.delete('products');
+      await txn.delete('customers');
+      await txn.delete('suppliers');
+      await txn.delete('purchases');
+      await txn.delete('purchase_items');
+      await txn.delete('stock_opname');
+      await txn.delete('void_transactions');
+    });
+
+    _products = [];
+    _cartItems.clear();
+    _transactionDiscountPercent = 0.0;
+    _transactionDiscountAmount = 0.0;
+
     await updatePendingCount();
     notifyListeners();
   }

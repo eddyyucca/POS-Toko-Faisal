@@ -682,9 +682,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               OutlinedButton.icon(
                 onPressed: () => _showDangerConfirmDialog(
                   title: 'Hapus Semua Data',
-                  message: 'Semua data transaksi, produk, dan pengguna akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.',
-                  onConfirm: () {
-                    // TODO: implement clear all data
+                  message: 'Semua data transaksi, produk, dan inventaris lokal akan dihapus secara permanen dari komputer ini. Lanjutkan?',
+                  onConfirm: () async {
+                    try {
+                      await Provider.of<AppProvider>(context, listen: false).clearAllLocalData();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Semua data lokal berhasil dihapus!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Gagal menghapus data: $e'),
+                            backgroundColor: AppColors.danger,
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
                 icon: const Icon(Icons.delete_sweep_rounded, size: 16),
