@@ -7,9 +7,13 @@ import '../utils/receipt_generator.dart';
 
 class PaymentDialog extends StatefulWidget {
   final double total;
-  final Function(String paymentMethod) onSuccess;
+  final Function(String paymentMethod, double amountPaid) onSuccess;
 
-  const PaymentDialog({super.key, required this.total, required this.onSuccess});
+  const PaymentDialog({
+    super.key,
+    required this.total,
+    required this.onSuccess,
+  });
 
   @override
   State<PaymentDialog> createState() => _PaymentDialogState();
@@ -21,13 +25,30 @@ class _PaymentDialogState extends State<PaymentDialog> {
   bool _paymentDone = false;
 
   final List<Map<String, dynamic>> _methods = [
-    {'label': 'Tunai', 'icon': Icons.payments_rounded, 'color': AppColors.paymentTunai},
-    {'label': 'QRIS', 'icon': Icons.qr_code_rounded, 'color': AppColors.paymentQris},
-    {'label': 'Kartu Debit', 'icon': Icons.credit_card_rounded, 'color': AppColors.paymentDebit},
-    {'label': 'Transfer', 'icon': Icons.account_balance_rounded, 'color': AppColors.paymentTransfer},
+    {
+      'label': 'Tunai',
+      'icon': Icons.payments_rounded,
+      'color': AppColors.paymentTunai,
+    },
+    {
+      'label': 'QRIS',
+      'icon': Icons.qr_code_rounded,
+      'color': AppColors.paymentQris,
+    },
+    {
+      'label': 'Kartu Debit',
+      'icon': Icons.credit_card_rounded,
+      'color': AppColors.paymentDebit,
+    },
+    {
+      'label': 'Transfer',
+      'icon': Icons.account_balance_rounded,
+      'color': AppColors.paymentTransfer,
+    },
   ];
 
-  double get cashAmount => double.tryParse(_cashController.text.replaceAll('.', '')) ?? 0;
+  double get cashAmount =>
+      double.tryParse(_cashController.text.replaceAll('.', '')) ?? 0;
   double get change => cashAmount - widget.total;
 
   @override
@@ -47,6 +68,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
       change: _selectedMethod == 0 ? change : 0,
       cashier: provider.currentUser,
       paymentMethod: _methods[_selectedMethod]['label'] as String,
+      printerName: provider.getSetting('selected_printer_name'),
     );
   }
 
@@ -75,7 +97,11 @@ class _PaymentDialogState extends State<PaymentDialog> {
             children: [
               const Text(
                 'Pembayaran',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
               GestureDetector(
                 onTap: () => Navigator.pop(context),
@@ -85,7 +111,11 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.close_rounded, size: 18, color: AppColors.textSecondary),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -96,21 +126,40 @@ class _PaymentDialogState extends State<PaymentDialog> {
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.15),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Total Tagihan', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                const Text(
+                  'Total Tagihan',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
                 Text(
                   _formatPrice(widget.total),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          const Text('Metode Pembayaran', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+          const Text(
+            'Metode Pembayaran',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: 10),
           Row(
             children: List.generate(_methods.length, (i) {
@@ -120,10 +169,14 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 child: GestureDetector(
                   onTap: () => setState(() => _selectedMethod = i),
                   child: Container(
-                    margin: EdgeInsets.only(right: i < _methods.length - 1 ? 8 : 0),
+                    margin: EdgeInsets.only(
+                      right: i < _methods.length - 1 ? 8 : 0,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: sel ? (m['color'] as Color).withValues(alpha: 0.08) : AppColors.background,
+                      color: sel
+                          ? (m['color'] as Color).withValues(alpha: 0.08)
+                          : AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: sel ? (m['color'] as Color) : AppColors.border,
@@ -132,14 +185,22 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     ),
                     child: Column(
                       children: [
-                        Icon(m['icon'] as IconData, color: sel ? m['color'] as Color : AppColors.textSecondary, size: 22),
+                        Icon(
+                          m['icon'] as IconData,
+                          color: sel
+                              ? m['color'] as Color
+                              : AppColors.textSecondary,
+                          size: 22,
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           m['label'] as String,
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
-                            color: sel ? m['color'] as Color : AppColors.textSecondary,
+                            color: sel
+                                ? m['color'] as Color
+                                : AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -151,7 +212,14 @@ class _PaymentDialogState extends State<PaymentDialog> {
           ),
           if (_selectedMethod == 0) ...[
             const SizedBox(height: 20),
-            const Text('Nominal Uang', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+            const Text(
+              'Nominal Uang',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _cashController,
@@ -173,7 +241,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
@@ -181,22 +252,39 @@ class _PaymentDialogState extends State<PaymentDialog> {
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
-              children: [50000, 100000, 50000 + widget.total.toInt(), widget.total.toInt()].map((v) {
-                return GestureDetector(
-                  onTap: () => setState(() => _cashController.text = v.toString()),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text(_formatPrice(v.toDouble()), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                  ),
-                );
-              }).toList(),
+              children:
+                  [
+                    50000,
+                    100000,
+                    50000 + widget.total.toInt(),
+                    widget.total.toInt(),
+                  ].map((v) {
+                    return GestureDetector(
+                      onTap: () =>
+                          setState(() => _cashController.text = v.toString()),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          _formatPrice(v.toDouble()),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
-            if (_cashController.text.isNotEmpty && cashAmount >= widget.total) ...[
+            if (_cashController.text.isNotEmpty &&
+                cashAmount >= widget.total) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -207,10 +295,20 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Kembalian', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    const Text(
+                      'Kembalian',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     Text(
                       _formatPrice(change),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -227,10 +325,15 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.border,
                 padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 elevation: 0,
               ),
-              child: const Text('Proses Pembayaran', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              child: const Text(
+                'Proses Pembayaran',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ],
@@ -251,14 +354,28 @@ class _PaymentDialogState extends State<PaymentDialog> {
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_circle_rounded, size: 48, color: AppColors.primary),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              size: 48,
+              color: AppColors.primary,
+            ),
           ),
           const SizedBox(height: 20),
-          const Text('Pembayaran Berhasil!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          const Text(
+            'Pembayaran Berhasil!',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
             'Transaksi ${_formatPrice(widget.total)} selesai',
-            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
           ),
           if (_selectedMethod == 0 && change > 0) ...[
             const SizedBox(height: 16),
@@ -271,11 +388,19 @@ class _PaymentDialogState extends State<PaymentDialog> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.info_rounded, color: AppColors.warning, size: 18),
+                  const Icon(
+                    Icons.info_rounded,
+                    color: AppColors.warning,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Kembalian: ${_formatPrice(change)}',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.warning),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.warning,
+                    ),
                   ),
                 ],
               ),
@@ -291,7 +416,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
                   label: const Text('Cetak Struk'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     side: const BorderSide(color: AppColors.border),
                     foregroundColor: AppColors.textPrimary,
                   ),
@@ -302,16 +429,24 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    widget.onSuccess(_methods[_selectedMethod]['label'] as String);
+                    widget.onSuccess(
+                      _methods[_selectedMethod]['label'] as String,
+                      _selectedMethod == 0 ? cashAmount : widget.total,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     elevation: 0,
                   ),
-                  child: const Text('Transaksi Baru', style: TextStyle(fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Transaksi Baru',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],
@@ -328,6 +463,14 @@ class _PaymentDialogState extends State<PaymentDialog> {
 
   void _processPayment() {
     setState(() => _paymentDone = true);
+
+    // Auto print receipt if enabled in settings
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final autoPrint =
+        provider.getSetting('print_receipt', defaultValue: 'true') == 'true';
+    if (autoPrint) {
+      _printReceipt();
+    }
   }
 
   String _formatPrice(double price) {

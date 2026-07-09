@@ -35,7 +35,9 @@ class _PosScreenState extends State<PosScreen> {
 
     if (event is KeyDownEvent) {
       final now = DateTime.now();
-      if (_lastKeystrokeTime != null && now.difference(_lastKeystrokeTime!) > const Duration(milliseconds: 100)) {
+      if (_lastKeystrokeTime != null &&
+          now.difference(_lastKeystrokeTime!) >
+              const Duration(milliseconds: 100)) {
         _barcodeBuffer = '';
       }
       _lastKeystrokeTime = now;
@@ -64,9 +66,11 @@ class _PosScreenState extends State<PosScreen> {
 
   List<Product> _getFilteredProducts(List<Product> allProducts) {
     return allProducts.where((p) {
-      final matchCat = _selectedCategory == 'Semua' || p.category == _selectedCategory;
-      final matchSearch = p.name.toLowerCase().contains(_searchQuery.toLowerCase()) || 
-                          p.sku.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchCat =
+          _selectedCategory == 'Semua' || p.category == _selectedCategory;
+      final matchSearch =
+          p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          p.sku.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchCat && matchSearch;
     }).toList();
   }
@@ -79,12 +83,12 @@ class _PosScreenState extends State<PosScreen> {
     Product? match;
     try {
       match = provider.products.firstWhere(
-        (p) => p.sku.toLowerCase() == query.trim().toLowerCase()
+        (p) => p.sku.toLowerCase() == query.trim().toLowerCase(),
       );
     } catch (_) {
       try {
         match = provider.products.firstWhere(
-          (p) => p.name.toLowerCase() == query.trim().toLowerCase()
+          (p) => p.name.toLowerCase() == query.trim().toLowerCase(),
         );
       } catch (_) {}
     }
@@ -101,11 +105,17 @@ class _PosScreenState extends State<PosScreen> {
   /// Tambah produk ke keranjang. Selalu masuk sebagai satuan dasar (Pcs/dll) -
   /// kalau barang punya satuan besar (Dus/Pack), kasir mengubahnya nanti
   /// langsung di panel keranjang sebelum bayar.
-  Future<void> _addProductToCart(Product product, {bool showSnackbar = false}) async {
+  Future<void> _addProductToCart(
+    Product product, {
+    bool showSnackbar = false,
+  }) async {
     if (product.stockDisplay <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Stok display habis! Lakukan mutasi dari gudang.', style: TextStyle(color: Colors.white)),
+          content: Text(
+            'Stok display habis! Lakukan mutasi dari gudang.',
+            style: TextStyle(color: Colors.white),
+          ),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -117,7 +127,10 @@ class _PosScreenState extends State<PosScreen> {
     if (showSnackbar) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🛒 Ditambahkan: ${product.name}', style: const TextStyle(color: Colors.white)),
+          content: Text(
+            '🛒 Ditambahkan: ${product.name}',
+            style: const TextStyle(color: Colors.white),
+          ),
           backgroundColor: AppColors.primary,
           duration: const Duration(seconds: 1),
         ),
@@ -133,9 +146,12 @@ class _PosScreenState extends State<PosScreen> {
       barrierDismissible: false,
       builder: (_) => PaymentDialog(
         total: total,
-        onSuccess: (String paymentMethod) async {
-          await provider.processCheckout(paymentMethod: paymentMethod);
-        }
+        onSuccess: (String paymentMethod, double amountPaid) async {
+          await provider.processCheckout(
+            paymentMethod: paymentMethod,
+            amountPaid: amountPaid,
+          );
+        },
       ),
     );
   }
@@ -154,19 +170,33 @@ class _PosScreenState extends State<PosScreen> {
       builder: (context, provider, child) {
         return Row(
           children: [
-            Expanded(child: _buildProductArea(provider.products)),
+            Expanded(child: _buildProductArea(provider)),
             CartPanel(
               cartItems: provider.cartItems,
               onClearCart: provider.clearCart,
-              onIncrement: (item) => provider.updateCartItemQuantity(item.product, item.quantity + 1, unit: item.selectedUnit),
-              onDecrement: (item) => provider.updateCartItemQuantity(item.product, item.quantity - 1, unit: item.selectedUnit),
-              onRemove: (item) => provider.removeCartItem(item.product, unit: item.selectedUnit),
+              onIncrement: (item) => provider.updateCartItemQuantity(
+                item.product,
+                item.quantity + 1,
+                unit: item.selectedUnit,
+              ),
+              onDecrement: (item) => provider.updateCartItemQuantity(
+                item.product,
+                item.quantity - 1,
+                unit: item.selectedUnit,
+              ),
+              onRemove: (item) => provider.removeCartItem(
+                item.product,
+                unit: item.selectedUnit,
+              ),
               onChangeUnit: (item, unit) {
                 final ok = provider.changeCartItemUnit(item, unit);
                 if (!ok) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Stok tidak cukup untuk satuan ini.', style: TextStyle(color: Colors.white)),
+                      content: Text(
+                        'Stok tidak cukup untuk satuan ini.',
+                        style: TextStyle(color: Colors.white),
+                      ),
                       backgroundColor: AppColors.danger,
                     ),
                   );
@@ -180,17 +210,19 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-  Widget _buildProductArea(List<Product> allProducts) {
+  Widget _buildProductArea(AppProvider provider) {
+    final allProducts = provider.products;
     return Column(
       children: [
-        _buildTopBar(allProducts.length),
+        _buildTopBar(provider),
         _buildCategoryTabs(allProducts),
         Expanded(child: _buildProductGrid(allProducts)),
       ],
     );
   }
 
-  Widget _buildTopBar(int productCount) {
+  Widget _buildTopBar(AppProvider provider) {
+    final productCount = provider.products.length;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: const BoxDecoration(
@@ -215,22 +247,126 @@ class _PosScreenState extends State<PosScreen> {
                 onSubmitted: _handleBarcodeScan,
                 decoration: const InputDecoration(
                   hintText: 'Cari nama atau scan barcode...',
-                  prefixIcon: Icon(Icons.qr_code_scanner_rounded, color: AppColors.textSecondary, size: 20),
+                  prefixIcon: Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: AppColors.textSecondary,
+                    size: 20,
+                  ),
                   border: InputBorder.none,
-                  hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  hintStyle: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
                   contentPadding: EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 16),
-          _buildStatChip(Icons.inventory_2_rounded, '$productCount', 'Produk', AppColors.primary),
+          _buildStatChip(
+            Icons.inventory_2_rounded,
+            '$productCount',
+            'Produk',
+            AppColors.primary,
+          ),
+          const SizedBox(width: 12),
+          InkWell(
+            onTap: provider.isSyncing
+                ? null
+                : () async {
+                    final result = await provider.performSync();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(
+                                result.success
+                                    ? Icons.check_circle_rounded
+                                    : Icons.error_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                result.success
+                                    ? 'Data produk berhasil diperbarui!'
+                                    : result.message,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: result.success
+                              ? AppColors.primary
+                              : AppColors.danger,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: provider.isSyncing
+                    ? AppColors.textSecondary.withValues(alpha: 0.08)
+                    : AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: provider.isSyncing
+                      ? AppColors.textSecondary.withValues(alpha: 0.2)
+                      : AppColors.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  provider.isSyncing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.textSecondary,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.sync_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                  const SizedBox(width: 8),
+                  Text(
+                    provider.isSyncing ? 'Memperbarui...' : 'Perbarui Produk',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: provider.isSyncing
+                          ? AppColors.textSecondary
+                          : AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatChip(IconData icon, String value, String label, Color color) {
+  Widget _buildStatChip(
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -245,8 +381,21 @@ class _PosScreenState extends State<PosScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
-              Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ],
           ),
         ],
@@ -274,9 +423,14 @@ class _PosScreenState extends State<PosScreen> {
                 onTap: () => setState(() => _selectedCategory = cat),
                 child: Container(
                   margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary : AppColors.background,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.background,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isSelected ? AppColors.primary : AppColors.border,
@@ -288,15 +442,24 @@ class _PosScreenState extends State<PosScreen> {
                         cat,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: isSelected
+                              ? Colors.white
+                              : AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.white.withValues(alpha: 0.25) : AppColors.border,
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.25)
+                              : AppColors.border,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -304,7 +467,9 @@ class _PosScreenState extends State<PosScreen> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : AppColors.textSecondary,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -326,11 +491,18 @@ class _PosScreenState extends State<PosScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off_rounded, size: 48, color: AppColors.textSecondary),
+            const Icon(
+              Icons.search_off_rounded,
+              size: 48,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(height: 12),
             Text(
               'Produk "$_searchQuery" tidak ditemukan',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
             ),
           ],
         ),

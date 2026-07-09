@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_provider.dart';
+import '../models/product.dart';
+import '../models/user.dart';
+import '../utils/receipt_generator.dart';
 
 class TransactionDetailDialog extends StatefulWidget {
   final Map<String, dynamic> tx;
@@ -84,8 +87,11 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                 color: AppColors.danger.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.warning_amber_rounded,
-                  color: AppColors.danger, size: 22),
+              child: Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.danger,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 10),
             const Text(
@@ -112,12 +118,17 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                     color: AppColors.danger.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: AppColors.danger.withValues(alpha: 0.2), width: 1),
+                      color: AppColors.danger.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline,
-                          color: AppColors.danger, size: 16),
+                      Icon(
+                        Icons.info_outline,
+                        color: AppColors.danger,
+                        size: 16,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -159,23 +170,31 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          BorderSide(color: AppColors.border, width: 1.5),
+                      borderSide: BorderSide(
+                        color: AppColors.border,
+                        width: 1.5,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          BorderSide(color: AppColors.border, width: 1.5),
+                      borderSide: BorderSide(
+                        color: AppColors.border,
+                        width: 1.5,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          BorderSide(color: AppColors.primary, width: 2),
+                      borderSide: BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          BorderSide(color: AppColors.danger, width: 1.5),
+                      borderSide: BorderSide(
+                        color: AppColors.danger,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                   validator: (val) {
@@ -197,8 +216,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
             onPressed: () => Navigator.pop(ctx, false),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.textSecondary,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
             child: const Text('Batal'),
           ),
@@ -213,10 +231,10 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               elevation: 0,
             ),
           ),
@@ -227,8 +245,10 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
     if (confirmed == true && mounted) {
       setState(() => _isVoiding = true);
       final provider = context.read<AppProvider>();
-      final success =
-          await provider.voidTransaction(widget.tx['id'], reasonController.text.trim());
+      final success = await provider.voidTransaction(
+        widget.tx['id'],
+        reasonController.text.trim(),
+      );
       if (!mounted) return;
       setState(() => _isVoiding = false);
 
@@ -238,18 +258,24 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle_outline,
-                    color: Colors.white, size: 20),
+                const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
-                    child: Text(
-                        'Transaksi ${widget.tx['id']} berhasil dibatalkan')),
+                  child: Text(
+                    'Transaksi ${widget.tx['id']} berhasil dibatalkan',
+                  ),
+                ),
               ],
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -261,14 +287,17 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                 const Icon(Icons.error_outline, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
                 const Expanded(
-                    child: Text(
-                        'Gagal membatalkan transaksi. Silakan coba lagi.')),
+                  child: Text(
+                    'Gagal membatalkan transaksi. Silakan coba lagi.',
+                  ),
+                ),
               ],
             ),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -292,8 +321,8 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
     final String cashier = tx['cashier'] as String;
     final String method = tx['method'] as String;
     final String? customerName = tx['customerName'] as String?;
-    final List<Map<String, dynamic>> itemDetails =
-        (tx['itemDetails'] as List).cast<Map<String, dynamic>>();
+    final List<Map<String, dynamic>> itemDetails = (tx['itemDetails'] as List)
+        .cast<Map<String, dynamic>>();
 
     // Compute subtotal from items
     double itemsSubtotal = 0;
@@ -350,8 +379,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
 
   // ── sub-widgets ───────────────────────────────────────────────────────────
 
-  Widget _buildHeader(
-      String txId, DateTime dateObj, BuildContext context) {
+  Widget _buildHeader(String txId, DateTime dateObj, BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
       decoration: BoxDecoration(
@@ -367,8 +395,11 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
               color: AppColors.primary.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.receipt_long_rounded,
-                color: AppColors.primary, size: 26),
+            child: Icon(
+              Icons.receipt_long_rounded,
+              color: AppColors.primary,
+              size: 26,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -387,8 +418,11 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today_rounded,
-                        size: 13, color: Colors.white54),
+                    Icon(
+                      Icons.calendar_today_rounded,
+                      size: 13,
+                      color: Colors.white54,
+                    ),
                     const SizedBox(width: 5),
                     Text(
                       _formatDate(dateObj),
@@ -410,8 +444,11 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
               borderRadius: BorderRadius.circular(8),
               child: Container(
                 padding: const EdgeInsets.all(6),
-                child: const Icon(Icons.close_rounded,
-                    color: Colors.white60, size: 22),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white60,
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -420,8 +457,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
     );
   }
 
-  Widget _buildInfoRow(
-      String cashier, String method, String? customerName) {
+  Widget _buildInfoRow(String cashier, String method, String? customerName) {
     final methodColor = _methodColor(method);
     final methodIcon = _methodIcon(method);
 
@@ -443,8 +479,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
               iconColor: AppColors.primary,
             ),
           ),
-          Container(
-              width: 1, height: 36, color: AppColors.border),
+          Container(width: 1, height: 36, color: AppColors.border),
           // Payment method
           Expanded(
             child: Padding(
@@ -457,8 +492,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                       color: methodColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child:
-                        Icon(methodIcon, color: methodColor, size: 16),
+                    child: Icon(methodIcon, color: methodColor, size: 16),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -475,7 +509,9 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                         const SizedBox(height: 2),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: methodColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
@@ -498,8 +534,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
           ),
           // Customer (if any)
           if (customerName != null) ...[
-            Container(
-                width: 1, height: 36, color: AppColors.border),
+            Container(width: 1, height: 36, color: AppColors.border),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(left: 12),
@@ -595,8 +630,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
             ),
             const SizedBox(width: 8),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: AppColors.primaryLightBg,
                 borderRadius: BorderRadius.circular(20),
@@ -625,37 +659,53 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
               // Header row
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.background,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(11)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(11),
+                  ),
                 ),
                 child: Row(
                   children: [
                     Expanded(
-                        flex: 4,
-                        child: Text('PRODUK', style: headerStyle)),
+                      flex: 4,
+                      child: Text('PRODUK', style: headerStyle),
+                    ),
                     SizedBox(
-                        width: 56,
-                        child: Text('QTY',
-                            style: headerStyle,
-                            textAlign: TextAlign.center)),
+                      width: 56,
+                      child: Text(
+                        'QTY',
+                        style: headerStyle,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                     Expanded(
-                        flex: 3,
-                        child: Text('HARGA SATUAN',
-                            style: headerStyle,
-                            textAlign: TextAlign.right)),
+                      flex: 3,
+                      child: Text(
+                        'HARGA SATUAN',
+                        style: headerStyle,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
                     Expanded(
-                        flex: 3,
-                        child: Text('SUBTOTAL',
-                            style: headerStyle,
-                            textAlign: TextAlign.right)),
+                      flex: 3,
+                      child: Text(
+                        'SUBTOTAL',
+                        style: headerStyle,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
                     Expanded(
-                        flex: 2,
-                        child: Text('DISKON',
-                            style: headerStyle,
-                            textAlign: TextAlign.right)),
+                      flex: 2,
+                      child: Text(
+                        'DISKON',
+                        style: headerStyle,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -677,14 +727,17 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
 
                 return Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 11),
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
                   decoration: BoxDecoration(
                     color: idx.isEven
                         ? AppColors.surface
                         : AppColors.background.withValues(alpha: 0.5),
                     borderRadius: isLast
                         ? const BorderRadius.vertical(
-                            bottom: Radius.circular(11))
+                            bottom: Radius.circular(11),
+                          )
                         : null,
                   ),
                   child: Row(
@@ -693,7 +746,11 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                         flex: 4,
                         child: Row(
                           children: [
-                            const Icon(Icons.inventory_2_rounded, size: 16, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.inventory_2_rounded,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -858,12 +915,28 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
   }
 
   Widget _buildActions(BuildContext context, bool isAdmin) {
+    final tx = widget.tx;
+    final provider = context.read<AppProvider>();
+    final double amount = (tx['amount'] as num).toDouble();
+    final double discount = (tx['discount'] as num).toDouble();
+    final String cashier = tx['cashier'] as String;
+    final String method = tx['method'] as String;
+    final List<Map<String, dynamic>> itemDetails = (tx['itemDetails'] as List)
+        .cast<Map<String, dynamic>>();
+
+    // Compute subtotal from items
+    double itemsSubtotal = 0;
+    for (final item in itemDetails) {
+      final qty = (item['qty'] as num).toDouble();
+      final price = (item['price'] as num).toDouble();
+      itemsSubtotal += qty * price;
+    }
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius:
-            const BorderRadius.vertical(bottom: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
         border: Border(top: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Row(
@@ -871,26 +944,53 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
           // Print button
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        const Icon(Icons.print_rounded,
-                            color: Colors.white, size: 18),
-                        const SizedBox(width: 10),
-                        const Expanded(
-                          child: Text(
-                              'Cetak struk dari halaman kasir'),
-                        ),
-                      ],
+              onPressed: () async {
+                // Construct CartItem list
+                final List<CartItem> cartItems = [];
+                for (final item in itemDetails) {
+                  final basePrice = (item['price'] as num).toDouble();
+                  final unitDiscount = (item['discount'] as num).toDouble();
+                  final dummyProduct = Product(
+                    id: 'dummy',
+                    name: (item['name'] as String?) ?? 'Produk',
+                    category: '',
+                    price: basePrice,
+                    stockGudang: 0,
+                    stockDisplay: 0,
+                    minStock: 0,
+                    maxStock: 0,
+                    emoji: (item['emoji'] as String?) ?? '📦',
+                    unit: (item['unit'] as String?) ?? 'Pcs',
+                  );
+                  cartItems.add(
+                    CartItem(
+                      product: dummyProduct,
+                      quantity: (item['qty'] as num).toInt(),
+                      selectedUnit: (item['unit'] as String?) ?? 'Pcs',
+                      customDiscountAmount: unitDiscount,
                     ),
-                    backgroundColor: AppColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    margin: const EdgeInsets.all(16),
-                  ),
+                  );
+                }
+
+                final cashierUser = User(
+                  id: '0',
+                  username: cashier,
+                  password: '',
+                  role: '',
+                );
+                final amountPaid =
+                    (tx['amountPaid'] as num?)?.toDouble() ?? amount;
+
+                await ReceiptGenerator.printReceipt(
+                  items: cartItems,
+                  subtotal: itemsSubtotal,
+                  totalDiscount: discount,
+                  total: amount,
+                  cashAmount: amountPaid,
+                  change: amountPaid > amount ? amountPaid - amount : 0.0,
+                  cashier: cashierUser,
+                  paymentMethod: method,
+                  printerName: provider.getSetting('selected_printer_name'),
                 );
               },
               icon: const Icon(Icons.print_rounded, size: 18),
@@ -900,7 +1000,8 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                 side: BorderSide(color: AppColors.primary, width: 1.5),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
@@ -920,20 +1021,24 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.danger),
+                            AppColors.danger,
+                          ),
                         ),
                       )
                     : const Icon(Icons.block_rounded, size: 18),
                 label: Text(
-                    _isVoiding ? 'Memproses...' : 'Batalkan Transaksi (Void)'),
+                  _isVoiding ? 'Memproses...' : 'Batalkan Transaksi (Void)',
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.danger,
                   side: BorderSide(color: AppColors.danger, width: 1.5),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  disabledForegroundColor:
-                      AppColors.danger.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  disabledForegroundColor: AppColors.danger.withValues(
+                    alpha: 0.5,
+                  ),
                   disabledMouseCursor: SystemMouseCursors.wait,
                 ),
               ),

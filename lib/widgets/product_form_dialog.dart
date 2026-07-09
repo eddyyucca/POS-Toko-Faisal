@@ -40,25 +40,55 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     final p = widget.product;
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _categoryCtrl = TextEditingController(text: p?.category ?? 'Umum');
-    _priceCtrl = TextEditingController(text: p != null ? p.price.toInt().toString() : '');
-    _stockGudangCtrl = TextEditingController(text: p?.stockGudang.toString() ?? '0');
-    _stockDisplayCtrl = TextEditingController(text: p?.stockDisplay.toString() ?? '0');
+    _priceCtrl = TextEditingController(
+      text: p != null ? _formatRawPrice(p.price) : '',
+    );
+    _stockGudangCtrl = TextEditingController(
+      text: p?.stockGudang.toString() ?? '0',
+    );
+    _stockDisplayCtrl = TextEditingController(
+      text: p?.stockDisplay.toString() ?? '0',
+    );
     _minStockCtrl = TextEditingController(text: p?.minStock.toString() ?? '5');
     _maxStockCtrl = TextEditingController(text: p?.maxStock.toString() ?? '50');
     _emojiCtrl = TextEditingController(text: p?.emoji ?? '📦');
-    _discountCtrl = TextEditingController(text: p?.discountPercent.toString() ?? '0');
+    _discountCtrl = TextEditingController(
+      text: p?.discountPercent.toString() ?? '0',
+    );
     _skuCtrl = TextEditingController(text: p?.sku ?? '');
-    _costPriceCtrl = TextEditingController(text: p != null ? p.costPrice.toInt().toString() : '0');
+    _costPriceCtrl = TextEditingController(
+      text: p != null ? _formatRawPrice(p.costPrice) : '0',
+    );
     _unitCtrl = TextEditingController(text: p?.unit ?? 'Pcs');
     _unit2Ctrl = TextEditingController(text: p?.unit2 ?? '');
     _unit2ConversionCtrl = TextEditingController(
-        text: p != null && p.unit2Conversion > 0 ? p.unit2Conversion.toString() : '');
+      text: p != null && p.unit2Conversion > 0
+          ? p.unit2Conversion.toString()
+          : '',
+    );
     _unit2PriceCtrl = TextEditingController(
-        text: p != null && p.unit2Price > 0 ? p.unit2Price.toInt().toString() : '');
+      text: p != null && p.unit2Price > 0 ? _formatRawPrice(p.unit2Price) : '',
+    );
 
     // Listen for price/costPrice changes to rebuild margin indicator
     _priceCtrl.addListener(_onPriceChanged);
     _costPriceCtrl.addListener(_onPriceChanged);
+  }
+
+  double _parseFormattedPrice(String text) {
+    final clean = text.replaceAll(RegExp(r'[^\d]'), '');
+    return double.tryParse(clean) ?? 0.0;
+  }
+
+  String _formatRawPrice(double price) {
+    if (price <= 0) return '';
+    final parts = price.toInt().toString().split('').reversed.toList();
+    final result = <String>[];
+    for (int i = 0; i < parts.length; i++) {
+      if (i > 0 && i % 3 == 0) result.add('.');
+      result.add(parts[i]);
+    }
+    return result.reversed.join();
   }
 
   void _onPriceChanged() {
@@ -111,10 +141,12 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     }
     if (_formKey.currentState!.validate()) {
       final newProduct = Product(
-        id: widget.product?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id:
+            widget.product?.id ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameCtrl.text,
         category: _categoryCtrl.text,
-        price: double.parse(_priceCtrl.text),
+        price: _parseFormattedPrice(_priceCtrl.text),
         stockGudang: int.parse(_stockGudangCtrl.text),
         stockDisplay: int.parse(_stockDisplayCtrl.text),
         minStock: int.parse(_minStockCtrl.text),
@@ -123,10 +155,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
         discountPercent: double.tryParse(_discountCtrl.text) ?? 0.0,
         sku: _skuCtrl.text,
         unit: _unitCtrl.text.isEmpty ? 'Pcs' : _unitCtrl.text,
-        costPrice: double.tryParse(_costPriceCtrl.text) ?? 0.0,
+        costPrice: _parseFormattedPrice(_costPriceCtrl.text),
         unit2: _unit2Ctrl.text.trim(),
         unit2Conversion: int.tryParse(_unit2ConversionCtrl.text) ?? 0,
-        unit2Price: double.tryParse(_unit2PriceCtrl.text) ?? 0.0,
+        unit2Price: _parseFormattedPrice(_unit2PriceCtrl.text),
       );
       widget.onSave(newProduct);
       Navigator.pop(context);
@@ -134,9 +166,9 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
   }
 
   double? get _currentMargin {
-    final price = double.tryParse(_priceCtrl.text);
-    final cost = double.tryParse(_costPriceCtrl.text);
-    if (price != null && cost != null && price > 0 && cost > 0) {
+    final price = _parseFormattedPrice(_priceCtrl.text);
+    final cost = _parseFormattedPrice(_costPriceCtrl.text);
+    if (price > 0 && cost > 0) {
       return (price - cost) / price * 100;
     }
     return null;
@@ -164,10 +196,17 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   children: [
                     Text(
                       isEdit ? 'Edit Produk' : 'Tambah Produk Baru',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: AppColors.textSecondary,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -183,14 +222,31 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildTextField('Harga Jual (Rp)', _priceCtrl, isNumber: true, isRequired: true),
+                _buildTextField(
+                  'Harga Jual (Rp)',
+                  _priceCtrl,
+                  isNumber: true,
+                  isRequired: true,
+                  isRupiah: true,
+                  customFormatters: [RupiahInputFormatter()],
+                ),
                 const SizedBox(height: 16),
                 // SKU and Cost Price row
                 Row(
                   children: [
-                    Expanded(child: _buildTextField('SKU / Kode Produk', _skuCtrl)),
+                    Expanded(
+                      child: _buildTextField('SKU / Kode Produk', _skuCtrl),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildTextField('Harga Modal / HPP (Rp)', _costPriceCtrl, isNumber: true, isDecimal: true)),
+                    Expanded(
+                      child: _buildTextField(
+                        'Harga Modal / HPP (Rp)',
+                        _costPriceCtrl,
+                        isNumber: true,
+                        isRupiah: true,
+                        customFormatters: [RupiahInputFormatter()],
+                      ),
+                    ),
                   ],
                 ),
                 // Margin indicator
@@ -201,41 +257,88 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildTextField('Stok Gudang', _stockGudangCtrl, isNumber: true)),
+                    Expanded(
+                      child: _buildTextField(
+                        'Stok Gudang',
+                        _stockGudangCtrl,
+                        isNumber: true,
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildTextField('Stok Display', _stockDisplayCtrl, isNumber: true)),
+                    Expanded(
+                      child: _buildTextField(
+                        'Stok Display',
+                        _stockDisplayCtrl,
+                        isNumber: true,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildTextField('Min Stok', _minStockCtrl, isNumber: true)),
+                    Expanded(
+                      child: _buildTextField(
+                        'Min Stok',
+                        _minStockCtrl,
+                        isNumber: true,
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildTextField('Max Stok', _maxStockCtrl, isNumber: true)),
+                    Expanded(
+                      child: _buildTextField(
+                        'Max Stok',
+                        _maxStockCtrl,
+                        isNumber: true,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildTextField('Diskon Default (%)', _discountCtrl, isNumber: true),
+                _buildTextField(
+                  'Diskon Default (%)',
+                  _discountCtrl,
+                  isNumber: true,
+                ),
                 const SizedBox(height: 20),
                 const Text(
                   'Satuan Besar (Dus/Renteng) - Opsional',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 const Text(
                   'Isi jika barang ini juga dijual per dus/renteng dengan harga berbeda.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(child: _buildUnit2Field(context)),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildTextField('Isi per Satuan (Pcs)', _unit2ConversionCtrl, isNumber: true)),
+                    Expanded(
+                      child: _buildTextField(
+                        'Isi per Satuan (Pcs)',
+                        _unit2ConversionCtrl,
+                        isNumber: true,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildTextField('Harga Jual per Satuan Besar (Rp)', _unit2PriceCtrl, isNumber: true),
+                _buildTextField(
+                  'Harga Jual per Satuan Besar (Rp)',
+                  _unit2PriceCtrl,
+                  isNumber: true,
+                  isRupiah: true,
+                  customFormatters: [RupiahInputFormatter()],
+                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -245,9 +348,14 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                    child: Text(isEdit ? 'Simpan Perubahan' : 'Tambah Produk', style: const TextStyle(fontWeight: FontWeight.w700)),
+                    child: Text(
+                      isEdit ? 'Simpan Perubahan' : 'Tambah Produk',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ],
@@ -324,6 +432,8 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     bool isDecimal = false,
     bool isRequired = false,
     int? maxLength,
+    List<TextInputFormatter>? customFormatters,
+    bool isRupiah = false,
   }) {
     List<TextInputFormatter>? formatters;
     TextInputType keyboardType = TextInputType.text;
@@ -332,39 +442,84 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       keyboardType = isDecimal
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.number;
-      formatters = isDecimal
-          ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
-          : [FilteringTextInputFormatter.digitsOnly];
+      formatters =
+          customFormatters ??
+          (isDecimal
+              ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
+              : [FilteringTextInputFormatter.digitsOnly]);
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           inputFormatters: formatters,
           maxLength: maxLength,
-          validator: isRequired ? (v) => v == null || v.isEmpty ? 'Harus diisi' : null : null,
+          validator: isRequired
+              ? (v) => v == null || v.isEmpty ? 'Harus diisi' : null
+              : null,
+          style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
             counterText: '',
+            prefixIcon: isRupiah
+                ? const Padding(
+                    padding: EdgeInsets.only(left: 14, right: 8),
+                    child: Text(
+                      'Rp',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
+                : null,
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 0,
+              minHeight: 0,
+            ),
             filled: true,
             fillColor: AppColors.background,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.border)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
             isDense: true,
           ),
         ),
       ],
     );
   }
+
   Widget _buildCategoryField(BuildContext context) {
     final provider = Provider.of<AppProvider>(context, listen: false);
-    final categories = provider.products.map((p) => p.category).toSet().toList();
+    final categories = provider.products
+        .map((p) => p.category)
+        .toSet()
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,7 +544,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               hintText: 'Pilih / Ketik Kategori',
               textStyle: const TextStyle(fontSize: 14),
               inputDecorationTheme: InputDecorationTheme(
-                hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                hintStyle: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: AppColors.border),
@@ -400,9 +558,15 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 filled: true,
                 fillColor: AppColors.background,
               ),
@@ -415,14 +579,23 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 }
               },
             );
-          }
+          },
         ),
       ],
     );
   }
 
   Widget _buildUnitField(BuildContext context) {
-    final units = ['Pcs', 'Kg', 'Gram', 'Liter', 'Box', 'Karton', 'Lusin', 'Pack'];
+    final units = [
+      'Pcs',
+      'Kg',
+      'Gram',
+      'Liter',
+      'Box',
+      'Karton',
+      'Lusin',
+      'Pack',
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -446,7 +619,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               hintText: 'Pilih / Ketik Satuan',
               textStyle: const TextStyle(fontSize: 14),
               inputDecorationTheme: InputDecorationTheme(
-                hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                hintStyle: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: AppColors.border),
@@ -457,9 +633,15 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 filled: true,
                 fillColor: AppColors.background,
               ),
@@ -472,7 +654,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 }
               },
             );
-          }
+          },
         ),
       ],
     );
@@ -503,7 +685,10 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
               hintText: 'Mis. Dus / Renteng',
               textStyle: const TextStyle(fontSize: 14),
               inputDecorationTheme: InputDecorationTheme(
-                hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                hintStyle: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: AppColors.border),
@@ -514,9 +699,15 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 filled: true,
                 fillColor: AppColors.background,
               ),
@@ -529,9 +720,44 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                 }
               },
             );
-          }
+          },
         ),
       ],
+    );
+  }
+}
+
+class RupiahInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.selection.baseOffset == 0) {
+      return newValue;
+    }
+
+    final String cleanText = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (cleanText.isEmpty) {
+      return newValue.copyWith(
+        text: '',
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    }
+
+    final double value = double.parse(cleanText);
+
+    final parts = value.toInt().toString().split('').reversed.toList();
+    final result = <String>[];
+    for (int i = 0; i < parts.length; i++) {
+      if (i > 0 && i % 3 == 0) result.add('.');
+      result.add(parts[i]);
+    }
+    final String formattedText = result.reversed.join();
+
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: formattedText.length),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 
@@ -26,7 +27,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _soundEnabled = false;
 
   // Printer selection
-  int _selectedPrinter = 0;
+  String _selectedPrinterName = '';
+  List<Printer> _systemPrinters = [];
+  bool _isLoadingPrinters = false;
 
   // Loading / saving state
   bool _isSaving = false;
@@ -36,23 +39,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadFromProvider();
+      _fetchSystemPrinters();
     });
+  }
+
+  Future<void> _fetchSystemPrinters() async {
+    setState(() => _isLoadingPrinters = true);
+    try {
+      final list = await Printing.listPrinters();
+      setState(() {
+        _systemPrinters = list;
+      });
+    } catch (e) {
+      debugPrint('Error loading printers: $e');
+    } finally {
+      setState(() => _isLoadingPrinters = false);
+    }
   }
 
   void _loadFromProvider() {
     final provider = Provider.of<AppProvider>(context, listen: false);
-    _nameCtrl.text = provider.getSetting('store_name', defaultValue: 'Toko Faisal');
+    _nameCtrl.text = provider.getSetting(
+      'store_name',
+      defaultValue: 'Toko Faisal',
+    );
     _addressCtrl.text = provider.getSetting('store_address', defaultValue: '');
     _phoneCtrl.text = provider.getSetting('store_phone', defaultValue: '');
     _emailCtrl.text = provider.getSetting('store_email', defaultValue: '');
     _taxPercCtrl.text = provider.getSetting('tax_percent', defaultValue: '11');
     _footerCtrl.text = provider.getSetting('receipt_footer', defaultValue: '');
-    _syncUrlCtrl.text = provider.getSetting('sync_server_url', defaultValue: 'https://tokofaisal.fluxa.co.id/api');
+    _syncUrlCtrl.text = provider.getSetting(
+      'sync_server_url',
+      defaultValue: 'https://tokofaisal.fluxa.co.id/api',
+    );
     setState(() {
-      _taxEnabled = provider.getSetting('tax_enabled', defaultValue: 'true') == 'true';
-      _printReceipt = provider.getSetting('print_receipt', defaultValue: 'true') == 'true';
-      _soundEnabled = provider.getSetting('sound_enabled', defaultValue: 'false') == 'true';
-      _selectedPrinter = int.tryParse(provider.getSetting('selected_printer', defaultValue: '0')) ?? 0;
+      _taxEnabled =
+          provider.getSetting('tax_enabled', defaultValue: 'true') == 'true';
+      _printReceipt =
+          provider.getSetting('print_receipt', defaultValue: 'true') == 'true';
+      _soundEnabled =
+          provider.getSetting('sound_enabled', defaultValue: 'false') == 'true';
+      _selectedPrinterName = provider.getSetting(
+        'selected_printer_name',
+        defaultValue: 'Tidak Ada Printer (Preview)',
+      );
     });
   }
 
@@ -83,7 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'print_receipt': _printReceipt.toString(),
         'sound_enabled': _soundEnabled.toString(),
         'sync_server_url': _syncUrlCtrl.text.trim(),
-        'selected_printer': _selectedPrinter.toString(),
+        'selected_printer_name': _selectedPrinterName,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -92,12 +122,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
                 SizedBox(width: 10),
-                Text('Pengaturan berhasil disimpan!', style: TextStyle(fontWeight: FontWeight.w500)),
+                Text(
+                  'Pengaturan berhasil disimpan!',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
               ],
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             margin: const EdgeInsets.all(16),
             duration: const Duration(seconds: 2),
           ),
@@ -110,7 +145,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content: Text('Gagal menyimpan pengaturan: $e'),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -145,7 +182,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SizedBox(height: 4),
                     Text(
                       'Konfigurasi aplikasi POS Anda',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -157,17 +197,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ? const SizedBox(
                         width: 14,
                         height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.save_rounded, size: 16),
                 label: Text(_isSaving ? 'Menyimpan...' : 'Simpan Pengaturan'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   elevation: 0,
-                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  textStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -181,10 +232,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   children: [
                     _buildSection('Informasi Toko', [
-                      _buildTextField('Nama Toko', 'cth. Toko Faisal', Icons.store_rounded, _nameCtrl),
-                      _buildTextField('Alamat', 'cth. Jl. Merdeka No. 10, Jakarta', Icons.location_on_rounded, _addressCtrl),
-                      _buildTextField('No. Telepon', 'cth. +62 812 3456 7890', Icons.phone_rounded, _phoneCtrl),
-                      _buildTextField('Email', 'cth. toko@email.com', Icons.email_rounded, _emailCtrl),
+                      _buildTextField(
+                        'Nama Toko',
+                        'cth. Toko Faisal',
+                        Icons.store_rounded,
+                        _nameCtrl,
+                      ),
+                      _buildTextField(
+                        'Alamat',
+                        'cth. Jl. Merdeka No. 10, Jakarta',
+                        Icons.location_on_rounded,
+                        _addressCtrl,
+                      ),
+                      _buildTextField(
+                        'No. Telepon',
+                        'cth. +62 812 3456 7890',
+                        Icons.phone_rounded,
+                        _phoneCtrl,
+                      ),
+                      _buildTextField(
+                        'Email',
+                        'cth. toko@email.com',
+                        Icons.email_rounded,
+                        _emailCtrl,
+                      ),
                     ]),
                     const SizedBox(height: 20),
                     _buildSection('Konfigurasi Pajak', [
@@ -194,12 +265,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _taxEnabled,
                         (v) {
                           setState(() => _taxEnabled = v);
-                          Provider.of<AppProvider>(context, listen: false)
-                              .saveSetting('tax_enabled', v.toString());
+                          Provider.of<AppProvider>(
+                            context,
+                            listen: false,
+                          ).saveSetting('tax_enabled', v.toString());
                         },
                       ),
-                      _buildTextField('Persentase Pajak (%)', 'cth. 11', Icons.percent_rounded, _taxPercCtrl,
-                          keyboardType: TextInputType.number),
+                      _buildTextField(
+                        'Persentase Pajak (%)',
+                        'cth. 11',
+                        Icons.percent_rounded,
+                        _taxPercCtrl,
+                        keyboardType: TextInputType.number,
+                      ),
                     ]),
                     const SizedBox(height: 20),
                     _buildSection('Struk & Footer', [
@@ -225,8 +303,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _printReceipt,
                         (v) {
                           setState(() => _printReceipt = v);
-                          Provider.of<AppProvider>(context, listen: false)
-                              .saveSetting('print_receipt', v.toString());
+                          Provider.of<AppProvider>(
+                            context,
+                            listen: false,
+                          ).saveSetting('print_receipt', v.toString());
                         },
                       ),
                       _buildSwitch(
@@ -235,18 +315,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _soundEnabled,
                         (v) {
                           setState(() => _soundEnabled = v);
-                          Provider.of<AppProvider>(context, listen: false)
-                              .saveSetting('sound_enabled', v.toString());
+                          Provider.of<AppProvider>(
+                            context,
+                            listen: false,
+                          ).saveSetting('sound_enabled', v.toString());
                         },
                       ),
                     ]),
                     const SizedBox(height: 20),
-                    _buildSection('Printer', [
-                      _buildPrinterSelector(),
-                    ]),
+                    _buildSection('Printer', [_buildPrinterSelector()]),
                     const SizedBox(height: 20),
                     Consumer<AppProvider>(
-                      builder: (context, provider, child) => _buildSyncSection(provider),
+                      builder: (context, provider, child) =>
+                          _buildSyncSection(provider),
                     ),
                     const SizedBox(height: 20),
                     // Info card
@@ -255,12 +336,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
@@ -290,17 +377,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.save_rounded, size: 18),
               label: Text(
                 _isSaving ? 'Menyimpan Pengaturan...' : 'Simpan Pengaturan',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
               ),
@@ -315,7 +410,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSyncSection(AppProvider provider) {
     return _buildSection('Sinkronisasi Data', [
-      _buildTextField('URL Server API', 'cth. https://tokofaisal.fluxa.co.id/api', Icons.cloud_sync_rounded, _syncUrlCtrl),
+      _buildTextField(
+        'URL Server API',
+        'cth. https://tokofaisal.fluxa.co.id/api',
+        Icons.cloud_sync_rounded,
+        _syncUrlCtrl,
+      ),
       const SizedBox(height: 12),
       Row(
         children: [
@@ -325,13 +425,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text(
                   'Data Tertunda: ${provider.pendingSyncCount}',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 Text(
                   provider.lastSyncTime != null
                       ? 'Terakhir: ${provider.lastSyncTime!.toString().split('.').first}'
                       : 'Belum pernah sinkronisasi',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -348,22 +455,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(result.message),
-                          backgroundColor: result.success ? AppColors.primary : AppColors.danger,
+                          backgroundColor: result.success
+                              ? AppColors.primary
+                              : AppColors.danger,
                           behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           margin: const EdgeInsets.all(16),
                         ),
                       );
                     }
                   },
             icon: provider.isSyncing
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.sync_rounded, size: 16),
             label: Text(provider.isSyncing ? 'Proses...' : 'Sync'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ],
@@ -373,7 +493,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.only(top: 8.0),
           child: Text(
             provider.syncStatus,
-            style: TextStyle(fontSize: 11, color: provider.isSyncing ? AppColors.primary : AppColors.textSecondary),
+            style: TextStyle(
+              fontSize: 11,
+              color: provider.isSyncing
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+            ),
           ),
         ),
       const SizedBox(height: 12),
@@ -381,7 +506,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       const SizedBox(height: 8),
       Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange),
+          const Icon(
+            Icons.warning_amber_rounded,
+            size: 16,
+            color: Colors.orange,
+          ),
           const SizedBox(width: 6),
           const Expanded(
             child: Text(
@@ -406,11 +535,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'Semua data lokal akan ditandai ulang sebagai pending dan dikirim ke server.\n\nLanjutkan?',
                       ),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Batal'),
+                        ),
                         ElevatedButton(
                           onPressed: () => Navigator.pop(ctx, true),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                          child: const Text('Ya, Force Sync', style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                          ),
+                          child: const Text(
+                            'Ya, Force Sync',
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       ],
                     ),
@@ -424,22 +561,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(result.success
-                            ? 'Force sync berhasil! Semua data terkirim ke backend.'
-                            : result.message),
-                        backgroundColor: result.success ? Colors.green : AppColors.danger,
+                        content: Text(
+                          result.success
+                              ? 'Force sync berhasil! Semua data terkirim ke backend.'
+                              : result.message,
+                        ),
+                        backgroundColor: result.success
+                            ? Colors.green
+                            : AppColors.danger,
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         margin: const EdgeInsets.all(16),
                       ),
                     );
                   }
                 },
-          icon: const Icon(Icons.upload_rounded, size: 16, color: Colors.orange),
-          label: const Text('Force Sync Semua Data', style: TextStyle(color: Colors.orange)),
+          icon: const Icon(
+            Icons.upload_rounded,
+            size: 16,
+            color: Colors.orange,
+          ),
+          label: const Text(
+            'Force Sync Semua Data',
+            style: TextStyle(color: Colors.orange),
+          ),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: Colors.orange),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         ),
       ),
@@ -453,14 +605,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
-        boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))],
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 16),
           ...children,
@@ -483,7 +645,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 6),
           TextFormField(
@@ -492,7 +658,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              hintStyle: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
               prefixIcon: Icon(icon, size: 16, color: AppColors.textSecondary),
               filled: true,
               fillColor: AppColors.background,
@@ -506,9 +675,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 10,
+                horizontal: 12,
+              ),
             ),
           ),
         ],
@@ -529,7 +704,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 6),
           TextFormField(
@@ -538,7 +717,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              hintStyle: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
               prefixIcon: Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Icon(icon, size: 16, color: AppColors.textSecondary),
@@ -556,9 +738,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 12,
+              ),
             ),
           ),
         ],
@@ -590,7 +778,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 Text(
                   description,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.4),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -607,41 +799,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildPrinterSelector() {
-    final printers = ['Epson TM-T82', 'Star TSP100', 'Citizen CT-S310', 'Kassen BTP 3100 USB', 'Tidak Ada Printer'];
+    if (_isLoadingPrinters) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(
+            strokeWidth: 3,
+            color: AppColors.primary,
+          ),
+        ),
+      );
+    }
+
+    final List<String> printersList = _systemPrinters
+        .map((p) => p.name)
+        .toList();
+    if (!printersList.contains('Tidak Ada Printer (Preview)')) {
+      printersList.add('Tidak Ada Printer (Preview)');
+    }
+
+    if (_selectedPrinterName.isEmpty ||
+        !printersList.contains(_selectedPrinterName)) {
+      _selectedPrinterName = 'Tidak Ada Printer (Preview)';
+    }
+
     return Column(
-      children: List.generate(printers.length, (i) {
+      children: List.generate(printersList.length, (i) {
+        final name = printersList[i];
+        final bool isSelected = _selectedPrinterName == name;
+        final bool isDummy = name == 'Tidak Ada Printer (Preview)';
+
         return GestureDetector(
-          onTap: () => setState(() => _selectedPrinter = i),
+          onTap: () => setState(() => _selectedPrinterName = name),
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: _selectedPrinter == i ? AppColors.primary.withValues(alpha: 0.07) : AppColors.background,
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.07)
+                  : AppColors.background,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: _selectedPrinter == i ? AppColors.primary : AppColors.border,
-                width: _selectedPrinter == i ? 1.5 : 1,
+                color: isSelected ? AppColors.primary : AppColors.border,
+                width: isSelected ? 1.5 : 1,
               ),
             ),
             child: Row(
               children: [
                 Icon(
-                  i < 4 ? Icons.print_rounded : Icons.print_disabled_rounded,
+                  !isDummy ? Icons.print_rounded : Icons.print_disabled_rounded,
                   size: 18,
-                  color: _selectedPrinter == i ? AppColors.primary : AppColors.textSecondary,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  printers[i],
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: _selectedPrinter == i ? FontWeight.w600 : FontWeight.w400,
-                    color: _selectedPrinter == i ? AppColors.primary : AppColors.textPrimary,
+                Expanded(
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
-                if (_selectedPrinter == i)
-                  const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+                if (isSelected)
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
               ],
             ),
           ),
@@ -663,11 +898,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 20),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.danger,
+                size: 20,
+              ),
               SizedBox(width: 8),
               Text(
                 'Zona Bahaya',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.danger),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.danger,
+                ),
               ),
             ],
           ),
@@ -682,10 +925,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               OutlinedButton.icon(
                 onPressed: () => _showDangerConfirmDialog(
                   title: 'Hapus Semua Data',
-                  message: 'Semua data transaksi, produk, dan inventaris lokal akan dihapus secara permanen dari komputer ini. Lanjutkan?',
+                  message:
+                      'Semua data transaksi, produk, dan inventaris lokal akan dihapus secara permanen dari komputer ini. Lanjutkan?',
                   onConfirm: () async {
                     try {
-                      await Provider.of<AppProvider>(context, listen: false).clearAllLocalData();
+                      await Provider.of<AppProvider>(
+                        context,
+                        listen: false,
+                      ).clearAllLocalData();
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -710,16 +957,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 label: const Text('Hapus Semua Data'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.danger,
-                  side: BorderSide(color: AppColors.danger.withValues(alpha: 0.5)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  side: BorderSide(
+                    color: AppColors.danger.withValues(alpha: 0.5),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               OutlinedButton.icon(
                 onPressed: () => _showDangerConfirmDialog(
                   title: 'Reset ke Default',
-                  message: 'Semua pengaturan akan dikembalikan ke nilai awal. Data transaksi tidak akan terpengaruh.',
+                  message:
+                      'Semua pengaturan akan dikembalikan ke nilai awal. Data transaksi tidak akan terpengaruh.',
                   onConfirm: () {
                     // Reset to defaults
                     setState(() {
@@ -732,7 +987,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _taxEnabled = true;
                       _printReceipt = true;
                       _soundEnabled = false;
-                      _selectedPrinter = 0;
+                      _selectedPrinterName = 'Tidak Ada Printer (Preview)';
                     });
                   },
                 ),
@@ -740,9 +995,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 label: const Text('Reset ke Default'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.warning,
-                  side: BorderSide(color: AppColors.warning.withValues(alpha: 0.5)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  side: BorderSide(
+                    color: AppColors.warning.withValues(alpha: 0.5),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -763,12 +1025,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 22),
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.danger,
+              size: 22,
+            ),
             const SizedBox(width: 10),
-            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
-        content: Text(message, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -782,7 +1054,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: const Text('Ya, Lanjutkan'),
           ),

@@ -54,7 +54,7 @@ class AppProvider with ChangeNotifier {
   Future<void> _initStartupSettings() async {
     try {
       await loadSettings();
-      
+
       // Self-healing check: Jika build adalah PROD tetapi URL yang tersimpan masih localhost,
       // paksa ubah kembali ke URL produksi resmi.
       var serverUrl = getSetting(
@@ -65,16 +65,16 @@ class AppProvider with ChangeNotifier {
         serverUrl = AppConfig.apiBaseUrl;
         await saveSetting('sync_server_url', serverUrl);
       }
-      
+
       _syncService.setServerUrl(serverUrl);
-      
+
       // Restore saved API token
       final savedToken = getSetting('api_token');
       if (savedToken.isNotEmpty) {
         _syncService.apiClient.setToken(savedToken);
       }
     } catch (_) {}
-    
+
     // Mulai ping setelah inisialisasi selesai
     _startPingCheck();
   }
@@ -156,7 +156,9 @@ class AppProvider with ChangeNotifier {
       // AUTO-SYNC ON RECONNECT
       if (oldPing == null && _pingMs != null) {
         if (!_isSyncing) {
-          performSync().catchError((_) => SyncResult(success: false, message: ''));
+          performSync().catchError(
+            (_) => SyncResult(success: false, message: ''),
+          );
         }
       }
     });
@@ -188,6 +190,8 @@ class AppProvider with ChangeNotifier {
       await loadProducts();
       await loadCustomers();
       await loadSuppliers();
+      // Reload history agar transaksi dari desktop lain (multi-kasir) ikut tampil
+      await loadTransactionHistory();
     } else {
       _syncStatus = result.message;
     }
@@ -206,10 +210,15 @@ class AppProvider with ChangeNotifier {
   Future<void> forceMarkAllPending() async {
     final db = await DatabaseHelper.instance.database;
     final tables = [
-      'products', 'customers', 'suppliers',
-      'transactions', 'transaction_items',
-      'purchases', 'purchase_items',
-      'stock_opname', 'void_transactions',
+      'products',
+      'customers',
+      'suppliers',
+      'transactions',
+      'transaction_items',
+      'purchases',
+      'purchase_items',
+      'stock_opname',
+      'void_transactions',
     ];
     for (final table in tables) {
       try {
@@ -270,17 +279,18 @@ class AppProvider with ChangeNotifier {
   Future<void> loadSettings() async {
     final db = await DatabaseHelper.instance.database;
     final rows = await db.query('settings');
-    _settings = {for (var row in rows) row['key'] as String: row['value'] as String};
+    _settings = {
+      for (var row in rows) row['key'] as String: row['value'] as String,
+    };
     notifyListeners();
   }
 
   Future<void> saveSetting(String key, String value) async {
     final db = await DatabaseHelper.instance.database;
-    await db.insert(
-      'settings',
-      {'key': key, 'value': value},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('settings', {
+      'key': key,
+      'value': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
     _settings[key] = value;
     notifyListeners();
   }
@@ -289,11 +299,10 @@ class AppProvider with ChangeNotifier {
     final db = await DatabaseHelper.instance.database;
     final batch = db.batch();
     for (var entry in newSettings.entries) {
-      batch.insert(
-        'settings',
-        {'key': entry.key, 'value': entry.value},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('settings', {
+        'key': entry.key,
+        'value': entry.value,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
     _settings.addAll(newSettings);
@@ -309,7 +318,10 @@ class AppProvider with ChangeNotifier {
   // --- Products ---
   Future<void> loadProducts() async {
     final db = await DatabaseHelper.instance.database;
-    final maps = await db.query('products');
+    final maps = await db.query(
+      'products',
+      where: "sync_status IS NULL OR sync_status != 'deleted'",
+    );
     _products = maps.map((e) => Product.fromMap(e)).toList();
     notifyListeners();
   }
@@ -342,8 +354,10 @@ class AppProvider with ChangeNotifier {
         await saveSetting('api_token', token);
 
         final usernameFromApi = userData['username'] as String;
-        final resolvedRole = usernameFromApi.toLowerCase() == 'admin' ? 'Admin' : 'Kasir';
-        
+        final resolvedRole = usernameFromApi.toLowerCase() == 'admin'
+            ? 'Admin'
+            : 'Kasir';
+
         // Buat User dari data API
         _currentUser = User(
           id: userData['id'].toString(),
@@ -401,33 +415,42 @@ class AppProvider with ChangeNotifier {
     if (product.stockDisplay <= 0) return;
 
     final selectedUnit = unit ?? product.unit;
-    final conversionQty = selectedUnit == product.unit2 ? product.unit2Conversion : 1;
+    final conversionQty = selectedUnit == product.unit2
+        ? product.unit2Conversion
+        : 1;
 
     int index = _cartItems.indexWhere(
-      (item) => item.product.id == product.id && item.selectedUnit == selectedUnit,
+      (item) =>
+          item.product.id == product.id && item.selectedUnit == selectedUnit,
     );
     if (index >= 0) {
-      if ((_cartItems[index].quantity + 1) * conversionQty <= product.stockDisplay) {
+      if ((_cartItems[index].quantity + 1) * conversionQty <=
+          product.stockDisplay) {
         _cartItems[index].quantity++;
       }
     } else if (conversionQty <= product.stockDisplay) {
-      _cartItems.add(CartItem(
-        product: product,
-        selectedUnit: selectedUnit,
-        conversionQty: conversionQty,
-      ));
+      _cartItems.add(
+        CartItem(
+          product: product,
+          selectedUnit: selectedUnit,
+          conversionQty: conversionQty,
+        ),
+      );
     }
     notifyListeners();
   }
 
   void updateCartItemQuantity(Product product, int quantity, {String? unit}) {
     int index = _cartItems.indexWhere(
-      (item) => item.product.id == product.id && (unit == null || item.selectedUnit == unit),
+      (item) =>
+          item.product.id == product.id &&
+          (unit == null || item.selectedUnit == unit),
     );
     if (index >= 0) {
       if (quantity <= 0) {
         _cartItems.removeAt(index);
-      } else if (quantity * _cartItems[index].conversionQty <= product.stockDisplay) {
+      } else if (quantity * _cartItems[index].conversionQty <=
+          product.stockDisplay) {
         _cartItems[index].quantity = quantity;
       }
       notifyListeners();
@@ -439,7 +462,9 @@ class AppProvider with ChangeNotifier {
   bool changeCartItemUnit(CartItem item, String newUnit) {
     if (newUnit == item.selectedUnit) return true;
     final product = item.product;
-    final conversionQty = newUnit == product.unit2 ? product.unit2Conversion : 1;
+    final conversionQty = newUnit == product.unit2
+        ? product.unit2Conversion
+        : 1;
     if (item.quantity * conversionQty > product.stockDisplay) {
       return false;
     }
@@ -451,7 +476,9 @@ class AppProvider with ChangeNotifier {
 
   void removeCartItem(Product product, {String? unit}) {
     _cartItems.removeWhere(
-      (item) => item.product.id == product.id && (unit == null || item.selectedUnit == unit),
+      (item) =>
+          item.product.id == product.id &&
+          (unit == null || item.selectedUnit == unit),
     );
     notifyListeners();
   }
@@ -470,7 +497,9 @@ class AppProvider with ChangeNotifier {
 
   double get totalDiscount {
     double total = subtotal;
-    double pct = _transactionDiscountPercent > 0 ? _transactionDiscountPercent : 0.0;
+    double pct = _transactionDiscountPercent > 0
+        ? _transactionDiscountPercent
+        : 0.0;
     return (total * (pct / 100)) + _transactionDiscountAmount;
   }
 
@@ -496,12 +525,16 @@ class AppProvider with ChangeNotifier {
 
   // --- Inventory & Checkout Methods ---
 
-  Future<void> processCheckout({String paymentMethod = 'Tunai'}) async {
+  Future<void> processCheckout({
+    String paymentMethod = 'Tunai',
+    double? amountPaid,
+  }) async {
     if (_cartItems.isEmpty) return;
 
     final db = await DatabaseHelper.instance.database;
     final randSuffix = Random().nextInt(99999);
-    final transactionId = 'TRX-${DateTime.now().millisecondsSinceEpoch}-$randSuffix';
+    final transactionId =
+        'TRX-${DateTime.now().millisecondsSinceEpoch}-$randSuffix';
     final dateStr = DateTime.now().toIso8601String();
     final String userId = _currentUser?.id ?? '1';
 
@@ -513,6 +546,7 @@ class AppProvider with ChangeNotifier {
           'date': dateStr,
           'total': total,
           'discount': totalDiscount,
+          'amountPaid': amountPaid ?? total,
           'userId': userId,
           'paymentMethod': paymentMethod,
           'customerId': _selectedCustomer?.id,
@@ -534,7 +568,8 @@ class AppProvider with ChangeNotifier {
           });
 
           // Kurangi stok display (dikonversi ke satuan terkecil/pcs)
-          int newStockDisplay = item.product.stockDisplay - (item.quantity * item.conversionQty);
+          int newStockDisplay =
+              item.product.stockDisplay - (item.quantity * item.conversionQty);
           await txn.update(
             'products',
             {'stockDisplay': newStockDisplay},
@@ -545,7 +580,12 @@ class AppProvider with ChangeNotifier {
 
         // 3. Update customer points & totalSpend if selected
         if (_selectedCustomer != null) {
-          final pointsEarned = (total / double.parse(getSetting('points_per_rupiah', defaultValue: '1000'))).floor();
+          final pointsEarned =
+              (total /
+                      double.parse(
+                        getSetting('points_per_rupiah', defaultValue: '1000'),
+                      ))
+                  .floor();
           await txn.update(
             'customers',
             {
@@ -578,17 +618,16 @@ class AppProvider with ChangeNotifier {
       int newGudang = target.stockGudang - quantity;
       int newDisplay = target.stockDisplay + quantity;
 
+      // Tandai pending agar perubahan stok ikut disinkronkan ke server
       await db.update(
         'products',
-        {
-          'stockGudang': newGudang,
-          'stockDisplay': newDisplay,
-        },
+        {'stockGudang': newGudang, 'stockDisplay': newDisplay, 'sync_status': 'pending'},
         where: 'id = ?',
         whereArgs: [productId],
       );
 
       await loadProducts();
+      await updatePendingCount();
     }
   }
 
@@ -600,31 +639,43 @@ class AppProvider with ChangeNotifier {
     map['sync_status'] = 'pending';
     await db.insert('products', map);
     await loadProducts();
+    await updatePendingCount(); // BUG-5 fix: update badge setelah tambah produk
   }
 
   Future<void> updateProduct(Product product) async {
     final db = await DatabaseHelper.instance.database;
     final map = product.toMap();
     map['sync_status'] = 'pending';
-    await db.update(
-      'products',
-      map,
-      where: 'id = ?',
-      whereArgs: [product.id],
-    );
+    await db.update('products', map, where: 'id = ?', whereArgs: [product.id]);
     await loadProducts();
     await updatePendingCount();
   }
 
   Future<void> deleteProduct(String productId) async {
     final db = await DatabaseHelper.instance.database;
-    await db.delete(
+    final result = await db.query(
       'products',
       where: 'id = ?',
       whereArgs: [productId],
     );
+    if (result.isNotEmpty) {
+      final product = result.first;
+      if (product['sync_status'] == 'pending' &&
+          !productId.startsWith('P-') &&
+          int.tryParse(productId) != null) {
+        await db.delete('products', where: 'id = ?', whereArgs: [productId]);
+      } else {
+        await db.update(
+          'products',
+          {'sync_status': 'deleted'},
+          where: 'id = ?',
+          whereArgs: [productId],
+        );
+      }
+    }
     _cartItems.removeWhere((item) => item.product.id == productId);
     await loadProducts();
+    await updatePendingCount();
   }
 
   // --- User Management (CRUD) ---
@@ -660,11 +711,7 @@ class AppProvider with ChangeNotifier {
     if (_currentUser?.id == userId) return;
 
     final db = await DatabaseHelper.instance.database;
-    await db.delete(
-      'users',
-      where: 'id = ?',
-      whereArgs: [userId],
-    );
+    await db.delete('users', where: 'id = ?', whereArgs: [userId]);
     await loadUsers();
   }
 
@@ -678,42 +725,80 @@ class AppProvider with ChangeNotifier {
 
   Future<void> loadSuppliers() async {
     final db = await DatabaseHelper.instance.database;
-    final maps = await db.query('suppliers');
+    final maps = await db.query(
+      'suppliers',
+      where: "sync_status IS NULL OR sync_status != 'deleted'",
+    );
     _suppliersList = maps.map((e) => Supplier.fromMap(e)).toList();
     notifyListeners();
   }
 
   Future<void> addSupplier(Supplier supplier) async {
     final db = await DatabaseHelper.instance.database;
-    await db.insert('suppliers', supplier.toMap());
+    final map = supplier.toMap();
+    map['sync_status'] = 'pending'; // BUG-1 fix
+    await db.insert('suppliers', map);
     await loadSuppliers();
+    await updatePendingCount();
   }
 
   Future<void> updateSupplier(Supplier supplier) async {
     final db = await DatabaseHelper.instance.database;
-    await db.update('suppliers', supplier.toMap(), where: 'id = ?', whereArgs: [supplier.id]);
+    final map = supplier.toMap();
+    map['sync_status'] = 'pending'; // BUG-1 fix
+    await db.update(
+      'suppliers',
+      map,
+      where: 'id = ?',
+      whereArgs: [supplier.id],
+    );
     await loadSuppliers();
+    await updatePendingCount();
   }
 
   Future<void> deleteSupplier(String id) async {
     final db = await DatabaseHelper.instance.database;
-    await db.delete('suppliers', where: 'id = ?', whereArgs: [id]);
+    final result = await db.query('suppliers', where: 'id = ?', whereArgs: [id]);
+    if (result.isNotEmpty) {
+      final supplier = result.first;
+      // Jika belum pernah di-sync ke server (masih pending & ID lokal), langsung hapus
+      if (supplier['sync_status'] == 'pending' && int.tryParse(id) != null) {
+        await db.delete('suppliers', where: 'id = ?', whereArgs: [id]);
+      } else {
+        // Tandai deleted agar server ikut menghapus saat sync berikutnya
+        await db.update(
+          'suppliers',
+          {'sync_status': 'deleted'},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+    }
     await loadSuppliers();
+    await updatePendingCount();
   }
 
-  Future<void> processPurchase(Purchase purchase, List<PurchaseItem> items) async {
+  Future<void> processPurchase(
+    Purchase purchase,
+    List<PurchaseItem> items,
+  ) async {
     final db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
-      await txn.insert('purchases', purchase.toMap());
+      final purchaseMap = purchase.toMap();
+      purchaseMap['sync_status'] = 'pending'; // BUG-2 fix
+      await txn.insert('purchases', purchaseMap);
 
       for (var item in items) {
-        await txn.insert('purchase_items', item.toMap());
+        final itemMap = item.toMap();
+        itemMap['sync_status'] = 'pending'; // BUG-2 fix
+        await txn.insert('purchase_items', itemMap);
 
         Product target = _products.firstWhere((p) => p.id == item.productId);
         int newGudang = target.stockGudang + item.qty;
+        // Tandai produk pending agar stok gudang ikut sync ke server
         await txn.update(
           'products',
-          {'stockGudang': newGudang},
+          {'stockGudang': newGudang, 'sync_status': 'pending'},
           where: 'id = ?',
           whereArgs: [item.productId],
         );
@@ -721,6 +806,7 @@ class AppProvider with ChangeNotifier {
     });
 
     await loadProducts();
+    await updatePendingCount();
   }
 
   // --- Customer Management ---
@@ -730,89 +816,166 @@ class AppProvider with ChangeNotifier {
 
   Future<void> loadCustomers() async {
     final db = await DatabaseHelper.instance.database;
-    final maps = await db.query('customers', orderBy: 'name ASC');
+    final maps = await db.query(
+      'customers',
+      where: "sync_status IS NULL OR sync_status != 'deleted'",
+      orderBy: 'name ASC',
+    );
     _customersList = maps.map((e) => Customer.fromMap(e)).toList();
     notifyListeners();
   }
 
   Future<void> addCustomer(Customer customer) async {
     final db = await DatabaseHelper.instance.database;
-    await db.insert('customers', customer.toMap());
+    final map = customer.toMap();
+    map['sync_status'] = 'pending'; // BUG-1 fix
+    await db.insert('customers', map);
     await loadCustomers();
+    await updatePendingCount();
   }
 
   Future<void> updateCustomer(Customer customer) async {
     final db = await DatabaseHelper.instance.database;
-    await db.update('customers', customer.toMap(), where: 'id = ?', whereArgs: [customer.id]);
+    final map = customer.toMap();
+    map['sync_status'] = 'pending'; // BUG-1 fix
+    await db.update(
+      'customers',
+      map,
+      where: 'id = ?',
+      whereArgs: [customer.id],
+    );
     await loadCustomers();
+    await updatePendingCount();
   }
 
   Future<void> deleteCustomer(String id) async {
     final db = await DatabaseHelper.instance.database;
-    await db.delete('customers', where: 'id = ?', whereArgs: [id]);
+    final result = await db.query('customers', where: 'id = ?', whereArgs: [id]);
+    if (result.isNotEmpty) {
+      final customer = result.first;
+      // Jika belum pernah di-sync ke server (masih pending & ID lokal), langsung hapus
+      if (customer['sync_status'] == 'pending' && int.tryParse(id) != null) {
+        await db.delete('customers', where: 'id = ?', whereArgs: [id]);
+      } else {
+        // Tandai deleted agar server ikut menghapus saat sync berikutnya
+        await db.update(
+          'customers',
+          {'sync_status': 'deleted'},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+    }
     if (_selectedCustomer?.id == id) _selectedCustomer = null;
     await loadCustomers();
+    await updatePendingCount();
   }
 
   // --- Transaction History ---
-  static const int historyPageSize = 100;
+  static const int historyPageSize = 30; // Kecilkan dari 100 → lebih ringan
   List<Map<String, dynamic>> _transactionHistory = [];
   List<Map<String, dynamic>> get transactionHistory => _transactionHistory;
   bool _hasMoreHistory = true;
   bool get hasMoreHistory => _hasMoreHistory;
   bool _isLoadingMoreHistory = false;
   bool get isLoadingMoreHistory => _isLoadingMoreHistory;
+  String _historySearchQuery = ''; // Simpan search query aktif
+  String get historySearchQuery => _historySearchQuery;
 
   /// Ringkasan transaksi hari ini, dihitung langsung lewat SQL agar tetap akurat
   /// walau daftar riwayat di memori sudah dipaginasi (tidak memuat semua data).
   Future<Map<String, dynamic>> getTodaySummary() async {
     final db = await DatabaseHelper.instance.database;
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT COUNT(*) as totalTrx, COALESCE(SUM(total), 0) as totalIncome
       FROM transactions
       WHERE date LIKE ?
-    ''', ['$todayStr%']);
+    ''',
+      ['$todayStr%'],
+    );
     return {
       'totalTrx': (result.first['totalTrx'] as int?) ?? 0,
       'totalIncome': (result.first['totalIncome'] as num?)?.toDouble() ?? 0.0,
     };
   }
 
-  /// Muat riwayat transaksi terbaru (halaman pertama). Tidak memuat SEMUA data
-  /// sekaligus - hanya [historyPageSize] transaksi paling baru, sisanya lewat loadMoreTransactionHistory().
-  Future<void> loadTransactionHistory() async {
+  /// Muat riwayat transaksi (halaman pertama).
+  /// [search] jika diisi, filter langsung di DB (id, kasir, produk, pelanggan).
+  Future<void> loadTransactionHistory({String search = ''}) async {
+    _historySearchQuery = search;
     _hasMoreHistory = true;
-    final history = await _fetchHistoryPage(offset: 0, limit: historyPageSize);
+    final history = await _fetchHistoryPage(
+      offset: 0,
+      limit: historyPageSize,
+      search: search,
+    );
     _transactionHistory = history;
     _hasMoreHistory = history.length == historyPageSize;
     notifyListeners();
   }
 
-  /// Muat halaman berikutnya (riwayat yang lebih lama) dan tambahkan ke list yang sudah ada.
+  /// Muat halaman berikutnya menggunakan search query yang aktif saat ini.
   Future<void> loadMoreTransactionHistory() async {
     if (_isLoadingMoreHistory || !_hasMoreHistory) return;
     _isLoadingMoreHistory = true;
     notifyListeners();
 
-    final nextPage = await _fetchHistoryPage(offset: _transactionHistory.length, limit: historyPageSize);
+    final nextPage = await _fetchHistoryPage(
+      offset: _transactionHistory.length,
+      limit: historyPageSize,
+      search: _historySearchQuery,
+    );
     _transactionHistory = [..._transactionHistory, ...nextPage];
     _hasMoreHistory = nextPage.length == historyPageSize;
     _isLoadingMoreHistory = false;
     notifyListeners();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchHistoryPage({required int offset, required int limit}) async {
+  Future<List<Map<String, dynamic>>> _fetchHistoryPage({
+    required int offset,
+    required int limit,
+    String search = '',
+  }) async {
     final db = await DatabaseHelper.instance.database;
-    final List<Map<String, dynamic>> txns = await db.rawQuery('''
-      SELECT t.id, t.date, t.total, t.discount, t.paymentMethod, t.customerId,
+
+    // Bangun WHERE clause untuk search (query ke DB, bukan filter in-memory)
+    final bool hasSearch = search.trim().isNotEmpty;
+    final String searchArg = '%${search.trim()}%';
+
+    final String whereClause = hasSearch
+        ? '''
+          WHERE (
+            t.id LIKE ?
+            OR u.username LIKE ?
+            OR c.name LIKE ?
+            OR EXISTS (
+              SELECT 1 FROM transaction_items ti2
+              LEFT JOIN products p2 ON ti2.productId = p2.id
+              WHERE ti2.transactionId = t.id AND p2.name LIKE ?
+            )
+          )
+        '''
+        : '';
+
+    final List<Object?> queryArgs = hasSearch
+        ? [searchArg, searchArg, searchArg, searchArg, limit, offset]
+        : [limit, offset];
+
+    final List<Map<String, dynamic>> txns = await db.rawQuery(
+      '''
+      SELECT t.id, t.date, t.total, t.discount, t.paymentMethod, t.customerId, t.amountPaid,
              u.username as cashier, c.name as customerName
       FROM transactions t
       LEFT JOIN users u ON t.userId = u.id
       LEFT JOIN customers c ON t.customerId = c.id
+      $whereClause
       ORDER BY t.date DESC
       LIMIT ? OFFSET ?
-    ''', [limit, offset]);
+    ''',
+      queryArgs,
+    );
 
     if (txns.isEmpty) return [];
 
@@ -828,7 +991,9 @@ class AppProvider with ChangeNotifier {
 
     final Map<String, List<Map<String, dynamic>>> itemsByTx = {};
     for (var item in itemsQuery) {
-      itemsByTx.putIfAbsent(item['transactionId'] as String, () => []).add(item);
+      itemsByTx
+          .putIfAbsent(item['transactionId'] as String, () => [])
+          .add(item);
     }
 
     List<Map<String, dynamic>> history = [];
@@ -839,7 +1004,9 @@ class AppProvider with ChangeNotifier {
       List<Map<String, dynamic>> itemDetails = [];
       for (var item in txItems) {
         final unit = (item['unit'] as String?) ?? 'Pcs';
-        itemsList.add('${item['emoji'] ?? ''} ${item['name'] ?? 'Unknown'} x${item['qty']} $unit');
+        itemsList.add(
+          '${item['emoji'] ?? ''} ${item['name'] ?? 'Unknown'} x${item['qty']} $unit',
+        );
         itemDetails.add({
           'name': item['name'] ?? 'Unknown',
           'emoji': item['emoji'] ?? '📦',
@@ -851,7 +1018,8 @@ class AppProvider with ChangeNotifier {
       }
 
       DateTime date = DateTime.parse(tx['date'].toString());
-      String timeStr = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      String timeStr =
+          '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
       history.add({
         'id': tx['id'],
@@ -859,6 +1027,7 @@ class AppProvider with ChangeNotifier {
         'dateObj': date,
         'amount': tx['total'],
         'discount': tx['discount'],
+        'amountPaid': tx['amountPaid'] ?? tx['total'],
         'cashier': tx['cashier'] ?? 'Admin',
         'method': tx['paymentMethod'] ?? 'Tunai',
         'customerName': tx['customerName'],
@@ -877,11 +1046,14 @@ class AppProvider with ChangeNotifier {
 
     try {
       // Get transaction items
-      final items = await db.rawQuery('''
+      final items = await db.rawQuery(
+        '''
         SELECT ti.productId, ti.qty
         FROM transaction_items ti
         WHERE ti.transactionId = ?
-      ''', [transactionId]);
+      ''',
+        [transactionId],
+      );
 
       await db.transaction((txn) async {
         // 1. Record void
@@ -906,8 +1078,16 @@ class AppProvider with ChangeNotifier {
         }
 
         // 3. Delete transaction items and transaction
-        await txn.delete('transaction_items', where: 'transactionId = ?', whereArgs: [transactionId]);
-        await txn.delete('transactions', where: 'id = ?', whereArgs: [transactionId]);
+        await txn.delete(
+          'transaction_items',
+          where: 'transactionId = ?',
+          whereArgs: [transactionId],
+        );
+        await txn.delete(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: [transactionId],
+        );
       });
 
       await loadProducts();
@@ -924,27 +1104,52 @@ class AppProvider with ChangeNotifier {
     final db = await DatabaseHelper.instance.database;
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
-    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
+    final todayEnd = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      23,
+      59,
+      59,
+    ).toIso8601String();
 
     // Today's revenue & transaction count
-    final todayStats = await db.rawQuery('''
+    final todayStats = await db.rawQuery(
+      '''
       SELECT 
         COUNT(*) as count,
         COALESCE(SUM(total), 0) as revenue,
         COALESCE(AVG(total), 0) as avgTransaction
       FROM transactions
       WHERE date BETWEEN ? AND ?
-    ''', [todayStart, todayEnd]);
+    ''',
+      [todayStart, todayEnd],
+    );
 
     // Hourly data for today
     final hourlyData = <Map<String, dynamic>>[];
     for (int h = 0; h < 24; h++) {
-      final hStart = DateTime(now.year, now.month, now.day, h).toIso8601String();
-      final hEnd = DateTime(now.year, now.month, now.day, h, 59, 59).toIso8601String();
-      final result = await db.rawQuery('''
+      final hStart = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        h,
+      ).toIso8601String();
+      final hEnd = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        h,
+        59,
+        59,
+      ).toIso8601String();
+      final result = await db.rawQuery(
+        '''
         SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as count
         FROM transactions WHERE date BETWEEN ? AND ?
-      ''', [hStart, hEnd]);
+      ''',
+        [hStart, hEnd],
+      );
       hourlyData.add({
         'hour': h,
         'revenue': (result.first['revenue'] as num).toDouble(),
@@ -953,7 +1158,8 @@ class AppProvider with ChangeNotifier {
     }
 
     // Top products today
-    final topProducts = await db.rawQuery('''
+    final topProducts = await db.rawQuery(
+      '''
       SELECT p.name, p.emoji, SUM(ti.qty) as totalQty, SUM(ti.qty * ti.price) as totalRevenue
       FROM transaction_items ti
       LEFT JOIN products p ON ti.productId = p.id
@@ -962,18 +1168,30 @@ class AppProvider with ChangeNotifier {
       GROUP BY ti.productId
       ORDER BY totalQty DESC
       LIMIT 5
-    ''', [todayStart, todayEnd]);
+    ''',
+      [todayStart, todayEnd],
+    );
 
     // Weekly data (last 7 days)
     final weeklyData = <Map<String, dynamic>>[];
     for (int d = 6; d >= 0; d--) {
       final day = now.subtract(Duration(days: d));
       final dayStart = DateTime(day.year, day.month, day.day).toIso8601String();
-      final dayEnd = DateTime(day.year, day.month, day.day, 23, 59, 59).toIso8601String();
-      final result = await db.rawQuery('''
+      final dayEnd = DateTime(
+        day.year,
+        day.month,
+        day.day,
+        23,
+        59,
+        59,
+      ).toIso8601String();
+      final result = await db.rawQuery(
+        '''
         SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as count
         FROM transactions WHERE date BETWEEN ? AND ?
-      ''', [dayStart, dayEnd]);
+      ''',
+        [dayStart, dayEnd],
+      );
       weeklyData.add({
         'date': day,
         'revenue': (result.first['revenue'] as num).toDouble(),
@@ -1022,7 +1240,8 @@ class AppProvider with ChangeNotifier {
     final endStr = end.toIso8601String();
 
     // Summary
-    final summary = await db.rawQuery('''
+    final summary = await db.rawQuery(
+      '''
       SELECT 
         COUNT(*) as count,
         COALESCE(SUM(total), 0) as revenue,
@@ -1030,18 +1249,24 @@ class AppProvider with ChangeNotifier {
         COALESCE(SUM(discount), 0) as totalDiscount
       FROM transactions
       WHERE date BETWEEN ? AND ?
-    ''', [startStr, endStr]);
+    ''',
+      [startStr, endStr],
+    );
 
     // Total items sold
-    final itemsSold = await db.rawQuery('''
+    final itemsSold = await db.rawQuery(
+      '''
       SELECT COALESCE(SUM(ti.qty), 0) as totalQty
       FROM transaction_items ti
       LEFT JOIN transactions t ON ti.transactionId = t.id
       WHERE t.date BETWEEN ? AND ?
-    ''', [startStr, endStr]);
+    ''',
+      [startStr, endStr],
+    );
 
     // Top products
-    final topProducts = await db.rawQuery('''
+    final topProducts = await db.rawQuery(
+      '''
       SELECT p.name, p.emoji, SUM(ti.qty) as totalQty, 
              SUM(ti.qty * ti.price) as totalRevenue,
              SUM(ti.qty * (ti.price - COALESCE(p.costPrice, 0))) as grossProfit
@@ -1052,7 +1277,9 @@ class AppProvider with ChangeNotifier {
       GROUP BY ti.productId
       ORDER BY totalQty DESC
       LIMIT 5
-    ''', [startStr, endStr]);
+    ''',
+      [startStr, endStr],
+    );
 
     // Daily data (last 7 days or within period)
     final dailyData = <Map<String, dynamic>>[];
@@ -1060,11 +1287,21 @@ class AppProvider with ChangeNotifier {
     for (int d = 6; d >= 0; d--) {
       final day = now.subtract(Duration(days: d));
       final dayStart = DateTime(day.year, day.month, day.day).toIso8601String();
-      final dayEnd = DateTime(day.year, day.month, day.day, 23, 59, 59).toIso8601String();
-      final result = await db.rawQuery('''
+      final dayEnd = DateTime(
+        day.year,
+        day.month,
+        day.day,
+        23,
+        59,
+        59,
+      ).toIso8601String();
+      final result = await db.rawQuery(
+        '''
         SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as count
         FROM transactions WHERE date BETWEEN ? AND ?
-      ''', [dayStart, dayEnd]);
+      ''',
+        [dayStart, dayEnd],
+      );
       dailyData.add({
         'day': dayNames[day.weekday - 1],
         'amount': (result.first['revenue'] as num).toDouble(),
@@ -1073,12 +1310,15 @@ class AppProvider with ChangeNotifier {
     }
 
     // Payment methods breakdown
-    final paymentBreakdown = await db.rawQuery('''
+    final paymentBreakdown = await db.rawQuery(
+      '''
       SELECT paymentMethod, COUNT(*) as count, COALESCE(SUM(total), 0) as revenue
       FROM transactions
       WHERE date BETWEEN ? AND ?
       GROUP BY paymentMethod
-    ''', [startStr, endStr]);
+    ''',
+      [startStr, endStr],
+    );
 
     return {
       'revenue': (summary.first['revenue'] as num).toDouble(),

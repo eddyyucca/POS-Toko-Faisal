@@ -206,7 +206,7 @@ class SyncService {
     final masterTables = ['products', 'customers', 'suppliers'];
     for (final table in masterTables) {
       try {
-        final rows = await db.query(table, where: "sync_status = 'pending'");
+        final rows = await db.query(table, where: "sync_status = 'pending' OR sync_status = 'deleted'");
         if (rows.isNotEmpty) {
           data[table] = rows;
         }
@@ -216,7 +216,6 @@ class SyncService {
     return data;
   }
 
-  /// Mark synced data as 'synced' (keep locally for history, don't delete)
   Future<void> _clearSyncedData(Map<String, dynamic> syncedIds) async {
     final db = await _db.database;
 
@@ -231,11 +230,22 @@ class SyncService {
       if (syncedIds.containsKey(table)) {
         final ids = List<String>.from(syncedIds[table]);
         if (ids.isNotEmpty) {
-          final placeholders = ids.map((_) => '?').join(',');
-          await db.rawUpdate(
-            "UPDATE $table SET sync_status = 'synced' WHERE id IN ($placeholders)",
-            ids,
-          );
+          if (table == 'products' || table == 'customers' || table == 'suppliers') {
+            for (final id in ids) {
+              final result = await db.query(table, where: 'id = ?', columns: ['sync_status'], whereArgs: [id]);
+              if (result.isNotEmpty && result.first['sync_status'] == 'deleted') {
+                await db.delete(table, where: 'id = ?', whereArgs: [id]);
+              } else {
+                await db.update(table, {'sync_status': 'synced'}, where: 'id = ?', whereArgs: [id]);
+              }
+            }
+          } else {
+            final placeholders = ids.map((_) => '?').join(',');
+            await db.rawUpdate(
+              "UPDATE $table SET sync_status = 'synced' WHERE id IN ($placeholders)",
+              ids,
+            );
+          }
         }
       }
     }
@@ -250,6 +260,11 @@ class SyncService {
     if (data['products'] != null) {
       for (final raw in List<Map<String, dynamic>>.from(data['products'])) {
         try {
+          if (raw['deleted_at'] != null) {
+            await db.delete('products', where: 'id = ?', whereArgs: [raw['id']]);
+            count++;
+            continue;
+          }
           final product = _filterFields(raw, {
             'id', 'name', 'category', 'price', 'costPrice',
             'stockGudang', 'stockDisplay', 'minStock', 'maxStock',
@@ -283,6 +298,12 @@ class SyncService {
     if (data['customers'] != null) {
       for (final raw in List<Map<String, dynamic>>.from(data['customers'])) {
         try {
+          // Hapus lokal jika sudah dihapus di server
+          if (raw['deleted_at'] != null) {
+            await db.delete('customers', where: 'id = ?', whereArgs: [raw['id']]);
+            count++;
+            continue;
+          }
           final customer = _filterFields(raw, {
             'id', 'name', 'phone', 'email', 'points', 'totalSpend',
             'createdAt', 'sync_status',
@@ -305,6 +326,12 @@ class SyncService {
     if (data['suppliers'] != null) {
       for (final raw in List<Map<String, dynamic>>.from(data['suppliers'])) {
         try {
+          // Hapus lokal jika sudah dihapus di server
+          if (raw['deleted_at'] != null) {
+            await db.delete('suppliers', where: 'id = ?', whereArgs: [raw['id']]);
+            count++;
+            continue;
+          }
           final supplier = _filterFields(raw, {
             'id', 'name', 'phone', 'address', 'sync_status',
           });
@@ -365,6 +392,33 @@ class SyncService {
           count++;
         } catch (e) {
           debugPrint('[Sync] Error insert transaction: $e');
+        }
+      }
+    }
+
+    // BUG-6 fix: Proses void transactions dari server — hapus transaksi yang divoid di desktop lain
+    if (data['void_transactions'] != null) {
+      for (final raw in List<Map<String, dynamic>>.from(data['void_transactions'])) {
+        try {
+          final txId = raw['transactionId'] as String?;
+          if (txId == null) continue;
+
+          // Cek apakah transaksi masih ada lokal (belum divoid oleh desktop ini)
+          final existing = await db.query(
+            'transactions',
+            where: 'id = ?',
+            whereArgs: [txId],
+            columns: ['sync_status'],
+          );
+          if (existing.isNotEmpty && existing.first['sync_status'] != 'pending') {
+            // Hapus transaksi dan item-nya (transaksi sudah divoid di desktop lain)
+            await db.delete('transaction_items', where: 'transactionId = ?', whereArgs: [txId]);
+            await db.delete('transactions', where: 'id = ?', whereArgs: [txId]);
+            count++;
+            debugPrint('[Sync] Transaksi $txId dihapus karena divoid di kasir lain');
+          }
+        } catch (e) {
+          debugPrint('[Sync] Error proses void_transaction: $e');
         }
       }
     }

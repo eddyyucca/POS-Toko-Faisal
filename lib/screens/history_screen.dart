@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -13,9 +14,9 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
-  String _searchQuery = '';
   int _todayTotalTrx = 0;
   double _todayTotalIncome = 0;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -23,16 +24,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refresh();
     });
-    _searchCtrl.addListener(() {
-      setState(() {
-        _searchQuery = _searchCtrl.text.toLowerCase();
-      });
+    _searchCtrl.addListener(_onSearchChanged);
+  }
+
+  /// Dipanggil setiap kali user mengetik — debounce 400ms agar tidak spam DB
+  void _onSearchChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      final provider = Provider.of<AppProvider>(context, listen: false);
+      provider.loadTransactionHistory(search: _searchCtrl.text.trim());
     });
   }
 
   Future<void> _refresh() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
-    await provider.loadTransactionHistory();
+    // Reset search saat refresh
+    _searchCtrl.clear();
+    await provider.loadTransactionHistory(search: '');
     final summary = await provider.getTodaySummary();
     if (!mounted) return;
     setState(() {
@@ -43,6 +51,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.removeListener(_onSearchChanged);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -51,28 +61,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
-        final allTransactions = provider.transactionHistory;
-
-        // Filter by search query
-        final transactions = _searchQuery.isEmpty
-            ? allTransactions
-            : allTransactions.where((tx) {
-                final id = (tx['id'] as String).toLowerCase();
-                final cashier = (tx['cashier'] as String).toLowerCase();
-                return id.contains(_searchQuery) || cashier.contains(_searchQuery);
-              }).toList();
+        // Data sudah difilter langsung di DB oleh loadTransactionHistory(search:...)
+        final transactions = provider.transactionHistory;
+        final isSearching = provider.historySearchQuery.isNotEmpty;
 
         return Column(
           children: [
-            _buildHeader(context, provider, _todayTotalTrx, _todayTotalIncome),
-            Expanded(child: _buildList(context, provider, transactions)),
+            _buildHeader(context, provider, _todayTotalTrx, _todayTotalIncome, isSearching),
+            Expanded(child: _buildList(context, provider, transactions, isSearching)),
           ],
         );
       },
     );
   }
 
-  Widget _buildHeader(BuildContext context, AppProvider provider, int totalTrx, double totalIncome) {
+  Widget _buildHeader(BuildContext context, AppProvider provider, int totalTrx, double totalIncome, bool isSearching) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
@@ -130,41 +133,48 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          // Search field
-          SizedBox(
-            height: 42,
-            child: TextField(
-              controller: _searchCtrl,
-              style: const TextStyle(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'Cari berdasarkan ID transaksi atau nama kasir...',
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textSecondary),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 16, color: AppColors.textSecondary),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: AppColors.background,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.border),
+          // Search field — DB-side search dengan debounce 400ms
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchCtrl,
+            builder: (context, value, _) {
+              return SizedBox(
+                height: 42,
+                child: TextField(
+                  controller: _searchCtrl,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Cari ID transaksi, kasir, produk, atau nama pelanggan...',
+                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textSecondary),
+                    suffixIcon: value.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 16, color: AppColors.textSecondary),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              Provider.of<AppProvider>(context, listen: false)
+                                  .loadTransactionHistory(search: '');
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.background,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                    ),
+                  ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                ),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -175,6 +185,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     BuildContext context,
     AppProvider provider,
     List<Map<String, dynamic>> transactions,
+    bool isSearching,
   ) {
     if (transactions.isEmpty) {
       return Center(
@@ -182,13 +193,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.receipt_long_rounded,
+              isSearching ? Icons.search_off_rounded : Icons.receipt_long_rounded,
               size: 56,
               color: AppColors.textSecondary.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 12),
             Text(
-              _searchQuery.isNotEmpty ? 'Tidak ada hasil untuk "$_searchQuery"' : 'Belum ada transaksi.',
+              isSearching
+                  ? 'Tidak ada hasil untuk "${provider.historySearchQuery}"'
+                  : 'Belum ada transaksi.',
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
           ],
@@ -217,7 +230,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             },
           ),
         ),
-        if (_searchQuery.isEmpty) _buildLoadMore(provider),
+        _buildLoadMore(provider),
       ],
     );
   }
