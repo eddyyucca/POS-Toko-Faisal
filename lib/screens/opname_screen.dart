@@ -65,13 +65,16 @@ class _OpnameScreenState extends State<OpnameScreen> {
         'difference': totalDiff,
         'notes': 'Stok opname manual',
         'userId': provider.currentUser?.id ?? '0',
+        'sync_status': 'pending',
       });
 
+      // Tandai pending agar hasil opname ikut disinkronkan ke server
       await txn.update(
         'products',
         {
           'stockGudang': actualGudang,
           'stockDisplay': actualDisplay,
+          'sync_status': 'pending',
         },
         where: 'id = ?',
         whereArgs: [product.id],
@@ -79,6 +82,7 @@ class _OpnameScreenState extends State<OpnameScreen> {
     });
 
     await provider.loadProducts();
+    await provider.updatePendingCount();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Stok Opname berhasil dicatat & diperbarui!')));
     }

@@ -60,6 +60,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   void _printReceipt() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
     await ReceiptGenerator.printReceipt(
+      provider: provider,
       items: provider.cartItems,
       subtotal: provider.subtotal,
       totalDiscount: provider.totalDiscount,

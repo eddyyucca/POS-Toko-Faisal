@@ -181,7 +181,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Konfigurasi aplikasi POS Anda',
+                      'Konfigurasi aplikasi POS Anda (v3.1.4)',
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,

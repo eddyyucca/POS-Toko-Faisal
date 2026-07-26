@@ -29,7 +29,7 @@ class SidebarNav extends StatelessWidget {
       color: AppColors.sidebar,
       child: Column(
         children: [
-          _buildHeader(provider, isCollapse),
+          _buildHeader(context, provider, isCollapse),
           const SizedBox(height: 8),
           // Dashboard
           _buildNavItem(0, Icons.dashboard_rounded, 'Dashboard', isCollapse),
@@ -57,7 +57,7 @@ class SidebarNav extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(AppProvider provider, bool isCollapse) {
+  Widget _buildHeader(BuildContext context, AppProvider provider, bool isCollapse) {
     final pendingCount = provider.pendingSyncCount;
     final isSyncing    = provider.isSyncing;
 
@@ -89,45 +89,71 @@ class SidebarNav extends StatelessWidget {
     }
 
     if (isCollapse) {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+      return GestureDetector(
+        onTap: isSyncing
+            ? null
+            : () async {
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Memulai sinkronisasi data...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                final result = await provider.performSync();
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(result.success
+                        ? 'Sinkronisasi berhasil! Data diperbarui.'
+                        : 'Gagal sinkron: ${result.message}'),
+                    backgroundColor: result.success ? AppColors.success : AppColors.danger,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/logo_circle.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: badgeTextColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.sidebar, width: 1.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/logo_circle.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: badgeTextColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.sidebar, width: 1.5),
-                ),
-              ),
-            ),
-          ],
         ),
       );
     }
@@ -189,28 +215,54 @@ class SidebarNav extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
-                // Badge sync
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: badgeBorder),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(badgeIcon, color: badgeTextColor, size: 10),
-                      const SizedBox(width: 4),
-                      Text(
-                        badgeLabel,
-                        style: TextStyle(
-                          color: badgeTextColor,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                        ),
+                // Badge sync (Bisa diklik untuk trigger Sync manual)
+                GestureDetector(
+                  onTap: isSyncing
+                      ? null
+                      : () async {
+                          final scaffoldMessenger = ScaffoldMessenger.of(context);
+                          scaffoldMessenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Memulai sinkronisasi data...'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                          final result = await provider.performSync();
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(result.success
+                                  ? 'Sinkronisasi berhasil! Data diperbarui.'
+                                  : 'Gagal sinkron: ${result.message}'),
+                              backgroundColor: result.success ? AppColors.success : AppColors.danger,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: badgeColor,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: badgeBorder),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(badgeIcon, color: badgeTextColor, size: 10),
+                          const SizedBox(width: 4),
+                          Text(
+                            badgeLabel,
+                            style: TextStyle(
+                              color: badgeTextColor,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],

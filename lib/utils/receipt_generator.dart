@@ -3,9 +3,11 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/product.dart';
 import '../models/user.dart';
+import '../providers/app_provider.dart';
 
 class ReceiptGenerator {
   static Future<void> printReceipt({
+    required AppProvider provider,
     required List<CartItem> items,
     required double subtotal,
     required double totalDiscount,
@@ -17,6 +19,11 @@ class ReceiptGenerator {
     String? printerName,
   }) async {
     final pdf = pw.Document();
+
+    final storeName = provider.getSetting('store_name', defaultValue: 'TOKO FAISAL');
+    final storeAddress = provider.getSetting('store_address', defaultValue: 'Sembako & Kebutuhan Harian');
+    final storePhone = provider.getSetting('store_phone', defaultValue: '');
+    final receiptFooter = provider.getSetting('receipt_footer', defaultValue: 'Barang yang sudah dibeli\ntidak dapat ditukar/dikembalikan');
 
     // Load font
     final font = await PdfGoogleFonts.robotoRegular();
@@ -41,29 +48,32 @@ class ReceiptGenerator {
                 child: pw.Column(
                   children: [
                     pw.Text(
-                      'TOKO FAISAL',
+                      storeName.toUpperCase(),
                       style: pw.TextStyle(
                         font: fontBold,
-                        fontSize: 16,
+                        fontSize: 14,
                         height: 0.95,
                       ),
                     ),
-                    pw.Text(
-                      'Sembako & Kebutuhan Harian',
-                      style: pw.TextStyle(
-                        font: font,
-                        fontSize: 9,
-                        height: 0.95,
+                    if (storeAddress.isNotEmpty)
+                      pw.Text(
+                        storeAddress,
+                        textAlign: pw.TextAlign.center,
+                        style: pw.TextStyle(
+                          font: font,
+                          fontSize: 9,
+                          height: 0.95,
+                        ),
                       ),
-                    ),
-                    pw.Text(
-                      'Jl. Contoh Alamat No. 123, Kota',
-                      style: pw.TextStyle(
-                        font: font,
-                        fontSize: 9,
-                        height: 0.95,
+                    if (storePhone.isNotEmpty)
+                      pw.Text(
+                        'Telp: $storePhone',
+                        style: pw.TextStyle(
+                          font: font,
+                          fontSize: 9,
+                          height: 0.95,
+                        ),
                       ),
-                    ),
                     pw.Divider(
                       borderStyle: pw.BorderStyle.dashed,
                       height: 2,
@@ -231,7 +241,7 @@ class ReceiptGenerator {
               ),
               pw.Center(
                 child: pw.Text(
-                  'Barang yang sudah dibeli\ntidak dapat ditukar/dikembalikan',
+                  receiptFooter,
                   textAlign: pw.TextAlign.center,
                   style: pw.TextStyle(font: font, fontSize: 8.5, height: 0.95),
                 ),

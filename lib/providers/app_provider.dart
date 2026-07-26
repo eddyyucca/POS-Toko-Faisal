@@ -570,9 +570,10 @@ class AppProvider with ChangeNotifier {
           // Kurangi stok display (dikonversi ke satuan terkecil/pcs)
           int newStockDisplay =
               item.product.stockDisplay - (item.quantity * item.conversionQty);
+          // Tandai pending agar perubahan stok ikut disinkronkan ke server
           await txn.update(
             'products',
-            {'stockDisplay': newStockDisplay},
+            {'stockDisplay': newStockDisplay, 'sync_status': 'pending'},
             where: 'id = ?',
             whereArgs: [item.product.id],
           );
@@ -586,11 +587,13 @@ class AppProvider with ChangeNotifier {
                         getSetting('points_per_rupiah', defaultValue: '1000'),
                       ))
                   .floor();
+          // Tandai pending agar poin & totalSpend ikut disinkronkan ke server
           await txn.update(
             'customers',
             {
               'points': _selectedCustomer!.points + pointsEarned,
               'totalSpend': _selectedCustomer!.totalSpend + total,
+              'sync_status': 'pending',
             },
             where: 'id = ?',
             whereArgs: [_selectedCustomer!.id],
@@ -1055,24 +1058,38 @@ class AppProvider with ChangeNotifier {
         [transactionId],
       );
 
-      await db.transaction((txn) async {
-        // 1. Record void
-        await txn.insert('void_transactions', {
-          'id': DateTime.now().millisecondsSinceEpoch.toString(),
-          'transactionId': transactionId,
-          'date': DateTime.now().toIso8601String(),
-          'reason': reason,
-          'userId': _currentUser?.id ?? '1',
-          'type': 'void',
-          'sync_status': 'pending',
-        });
+      // Cek apakah transaksi ini sudah pernah ter-upload ke server.
+      // Kalau masih 'pending' (belum pernah sampai ke server), server tidak
+      // pernah tahu transaksi ini ada, jadi tidak perlu kirim void_transactions.
+      final txnRow = await db.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: [transactionId],
+        columns: ['sync_status'],
+      );
+      final bool wasSynced =
+          txnRow.isNotEmpty && txnRow.first['sync_status'] != 'pending';
 
-        // 2. Return stock
+      await db.transaction((txn) async {
+        // 1. Record void (hanya perlu dikirim ke server jika transaksinya sudah tersinkron)
+        if (wasSynced) {
+          await txn.insert('void_transactions', {
+            'id': DateTime.now().millisecondsSinceEpoch.toString(),
+            'transactionId': transactionId,
+            'date': DateTime.now().toIso8601String(),
+            'reason': reason,
+            'userId': _currentUser?.id ?? '1',
+            'type': 'void',
+            'sync_status': 'pending',
+          });
+        }
+
+        // 2. Return stock — tandai pending agar ikut disinkronkan ke server
         for (var item in items) {
           final productId = item['productId'] as String;
           final qty = item['qty'] as int;
           await txn.rawUpdate(
-            'UPDATE products SET stockDisplay = stockDisplay + ? WHERE id = ?',
+            "UPDATE products SET stockDisplay = stockDisplay + ?, sync_status = 'pending' WHERE id = ?",
             [qty, productId],
           );
         }

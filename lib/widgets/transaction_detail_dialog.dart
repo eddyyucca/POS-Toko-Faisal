@@ -982,6 +982,7 @@ class _TransactionDetailDialogState extends State<TransactionDetailDialog> {
                     (tx['amountPaid'] as num?)?.toDouble() ?? amount;
 
                 await ReceiptGenerator.printReceipt(
+                  provider: provider,
                   items: cartItems,
                   subtotal: itemsSubtotal,
                   totalDiscount: discount,

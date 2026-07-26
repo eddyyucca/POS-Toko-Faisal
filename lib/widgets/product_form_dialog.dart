@@ -131,7 +131,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     return null;
   }
 
-  void _save() {
+  void _save() async {
     final unit2Error = _unit2Error();
     if (unit2Error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -139,7 +139,28 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       );
       return;
     }
+
     if (_formKey.currentState!.validate()) {
+      final inputSku = _skuCtrl.text.trim();
+      final provider = Provider.of<AppProvider>(context, listen: false);
+
+      // Cek SKU duplikat di local database (hanya untuk produk baru, bukan mode edit)
+      if (widget.product == null && inputSku.isNotEmpty) {
+        final isSkuExists = provider.products.any(
+          (p) => p.sku.trim().toLowerCase() == inputSku.toLowerCase(),
+        );
+
+        if (isSkuExists) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal: SKU/Kode Produk "$inputSku" sudah digunakan oleh produk lain!'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+          return;
+        }
+      }
+
       final newProduct = Product(
         id:
             widget.product?.id ??
@@ -153,7 +174,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
         maxStock: int.parse(_maxStockCtrl.text),
         emoji: _emojiCtrl.text.isEmpty ? '📦' : _emojiCtrl.text,
         discountPercent: double.tryParse(_discountCtrl.text) ?? 0.0,
-        sku: _skuCtrl.text,
+        sku: inputSku,
         unit: _unitCtrl.text.isEmpty ? 'Pcs' : _unitCtrl.text,
         costPrice: _parseFormattedPrice(_costPriceCtrl.text),
         unit2: _unit2Ctrl.text.trim(),
